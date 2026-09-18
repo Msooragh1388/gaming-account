@@ -1,0 +1,1562 @@
+
+"use client";
+
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+
+import { supabase } from "@/lib/supabase";
+
+const STORAGE_BUCKET = "product-media";
+
+type Game = {
+  id: number;
+  name: string;
+  slug: string;
+  active: boolean;
+  createdAt: string;
+};
+
+type Product = {
+  id: number;
+  game: string;
+  title: string;
+  description: string | null;
+  price: number;
+  images: string[] | null;
+  videoUrl: string | null;
+  isSold: boolean;
+  likes: number;
+  createdAt: string;
+};
+
+type FullProduct = Product & {
+  accountUsername: string;
+  accountPassword: string;
+};
+
+function createSlug(text: string) {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\u0600-\u06ff-]/g, "");
+}
+
+export default function AdminPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
+
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingGames, setLoadingGames] = useState(true);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  const [message, setMessage] = useState("");
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showGameModal, setShowGameModal] = useState(false);
+
+  const [editingProduct, setEditingProduct] =
+    useState<Product | null>(null);
+
+  const [game, setGame] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [accountUsername, setAccountUsername] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
+
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedVideo, setUploadedVideo] = useState("");
+
+  const [saving, setSaving] = useState(false);
+
+  const [newGameName, setNewGameName] = useState("");
+  const [addingGame, setAddingGame] = useState(false);
+
+  // =========================================
+  // LOAD GAMES
+  // =========================================
+
+  async function loadGames() {
+    setLoadingGames(true);
+
+    const { data, error } = await supabase
+      .from("Game")
+      .select("*")
+      .order("createdAt", {
+        ascending: true,
+      });
+
+    if (error) {
+      console.error(error);
+
+      setMessage(
+        `خطا در دریافت بازی‌ها: ${error.message}`
+      );
+
+      setLoadingGames(false);
+      return;
+    }
+
+    setGames(data || []);
+    setLoadingGames(false);
+  }
+
+  // =========================================
+  // LOAD PRODUCTS
+  // =========================================
+
+  async function loadProducts() {
+    setLoadingProducts(true);
+
+    const { data, error } = await supabase
+      .from("ProductPublic")
+      .select("*")
+      .order("createdAt", {
+        ascending: false,
+      });
+
+    if (error) {
+      console.error(error);
+
+      setMessage(
+        `خطا در دریافت اکانت‌ها: ${error.message}`
+      );
+
+      setLoadingProducts(false);
+      return;
+    }
+
+    setProducts(data || []);
+    setLoadingProducts(false);
+  }
+
+  useEffect(() => {
+    loadGames();
+    loadProducts();
+  }, []);
+
+  // =========================================
+  // ADD GAME
+  // =========================================
+
+  async function handleAddGame(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    const cleanName = newGameName.trim();
+
+    if (!cleanName) {
+      setMessage("نام بازی را وارد کن.");
+      return;
+    }
+
+    const slug = createSlug(cleanName);
+
+    if (!slug) {
+      setMessage("نام بازی معتبر نیست.");
+      return;
+    }
+
+    setAddingGame(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("Game")
+      .insert({
+        name: cleanName,
+        slug,
+        active: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error(error);
+
+      if (error.code === "23505") {
+        setMessage("این بازی قبلاً وجود دارد.");
+      } else {
+        setMessage(
+          `خطا در اضافه کردن بازی: ${error.message}`
+        );
+      }
+
+      setAddingGame(false);
+      return;
+    }
+
+    if (data) {
+      setGames((current) => [...current, data]);
+    }
+
+    setNewGameName("");
+    setShowGameModal(false);
+
+    setGame(cleanName);
+
+    setMessage(
+      `بازی «${cleanName}» با موفقیت اضافه شد.`
+    );
+
+    setAddingGame(false);
+  }
+
+  // =========================================
+  // TOGGLE GAME
+  // =========================================
+
+  async function toggleGame(gameItem: Game) {
+    setMessage("");
+
+    const { error } = await supabase
+      .from("Game")
+      .update({
+        active: !gameItem.active,
+      })
+      .eq("id", gameItem.id);
+
+    if (error) {
+      console.error(error);
+
+      setMessage(
+        `خطا در تغییر وضعیت بازی: ${error.message}`
+      );
+
+      return;
+    }
+
+    setGames((current) =>
+      current.map((item) =>
+        item.id === gameItem.id
+          ? {
+              ...item,
+              active: !item.active,
+            }
+          : item
+      )
+    );
+
+    setMessage(
+      gameItem.active
+        ? `بازی «${gameItem.name}» غیرفعال شد.`
+        : `بازی «${gameItem.name}» فعال شد.`
+    );
+  }
+
+  // =========================================
+  // DELETE GAME
+  // =========================================
+
+  async function deleteGame(gameItem: Game) {
+    const usedByProduct = products.some(
+      (product) => product.game === gameItem.name
+    );
+
+    if (usedByProduct) {
+      setMessage(
+        "این بازی برای حداقل یک اکانت استفاده شده و فعلاً قابل حذف نیست. می‌توانی آن را غیرفعال کنی."
+      );
+
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `آیا مطمئنی می‌خواهی بازی «${gameItem.name}» را حذف کنی؟`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+
+    const { error } = await supabase
+      .from("Game")
+      .delete()
+      .eq("id", gameItem.id);
+
+    if (error) {
+      console.error(error);
+
+      setMessage(
+        `خطا در حذف بازی: ${error.message}`
+      );
+
+      return;
+    }
+
+    setGames((current) =>
+      current.filter(
+        (item) => item.id !== gameItem.id
+      )
+    );
+
+    if (game === gameItem.name) {
+      setGame("");
+    }
+
+    setMessage(
+      `بازی «${gameItem.name}» حذف شد.`
+    );
+  }
+
+  // =========================================
+  // RESET ACCOUNT FORM
+  // =========================================
+
+  function resetForm() {
+    setGame(
+      games.find((item) => item.active)?.name || ""
+    );
+
+    setTitle("");
+    setDescription("");
+    setPrice("");
+    setAccountUsername("");
+    setAccountPassword("");
+
+    setSelectedImages([]);
+    setSelectedVideo(null);
+
+    setUploadedImages([]);
+    setUploadedVideo("");
+
+    setEditingProduct(null);
+  }
+
+  // =========================================
+  // OPEN ADD MODAL
+  // =========================================
+
+  function openAddModal() {
+    resetForm();
+
+    setShowAddModal(true);
+    setMessage("");
+  }
+
+  // =========================================
+  // OPEN EDIT MODAL
+  // =========================================
+
+  async function openEditModal(product: Product) {
+    setLoadingEdit(true);
+    setMessage("");
+
+    const { data, error } = await supabase.rpc(
+      "get_product_account",
+      {
+        p_id: product.id,
+      }
+    );
+
+    if (error) {
+      console.error(error);
+
+      setMessage(
+        `خطا در دریافت اطلاعات اکانت: ${error.message}`
+      );
+
+      setLoadingEdit(false);
+      return;
+    }
+
+    const fullProduct =
+      Array.isArray(data)
+        ? (data[0] as FullProduct | undefined)
+        : (data as FullProduct | null);
+
+    if (!fullProduct) {
+      setMessage(
+        "اطلاعات کامل اکانت پیدا نشد."
+      );
+
+      setLoadingEdit(false);
+      return;
+    }
+
+    setEditingProduct(product);
+
+    setGame(fullProduct.game);
+    setTitle(fullProduct.title);
+    setDescription(
+      fullProduct.description || ""
+    );
+    setPrice(String(fullProduct.price));
+
+    // مهم:
+    // حالا جیمیل و رمز واقعی اکانت
+    // داخل فیلدها قرار می‌گیرند.
+    setAccountUsername(
+      fullProduct.accountUsername || ""
+    );
+
+    setAccountPassword(
+      fullProduct.accountPassword || ""
+    );
+
+    setSelectedImages([]);
+    setSelectedVideo(null);
+
+    setUploadedImages(
+      fullProduct.images || []
+    );
+
+    setUploadedVideo(
+      fullProduct.videoUrl || ""
+    );
+
+    setShowAddModal(true);
+    setLoadingEdit(false);
+  }
+
+  // =========================================
+  // CLOSE ACCOUNT MODAL
+  // =========================================
+
+  function closeAddModal() {
+    if (saving) {
+      return;
+    }
+
+    setShowAddModal(false);
+    resetForm();
+  }
+
+  // =========================================
+  // IMAGE SELECT
+  // =========================================
+
+  function handleImageChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const files = Array.from(
+      event.target.files || []
+    );
+
+    setSelectedImages(files);
+  }
+
+  // =========================================
+  // VIDEO SELECT
+  // =========================================
+
+  function handleVideoChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      event.target.files?.[0] || null;
+
+    setSelectedVideo(file);
+  }
+
+  // =========================================
+  // UPLOAD IMAGE
+  // =========================================
+
+  async function uploadImage(file: File) {
+    const extension =
+      file.name.split(".").pop() || "jpg";
+
+    const fileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const path = `images/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, file, {
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(path);
+
+    return data.publicUrl;
+  }
+
+  // =========================================
+  // UPLOAD VIDEO
+  // =========================================
+
+  async function uploadVideo(file: File) {
+    const extension =
+      file.name.split(".").pop() || "mp4";
+
+    const fileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const path = `videos/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, file, {
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(path);
+
+    return data.publicUrl;
+  }
+
+  // =========================================
+  // DELETE STORAGE FILE
+  // =========================================
+
+  async function removeStorageFile(
+    publicUrl: string
+  ) {
+    try {
+      const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+
+      const index = publicUrl.indexOf(marker);
+
+      if (index === -1) {
+        return;
+      }
+
+      const path = publicUrl.slice(
+        index + marker.length
+      );
+
+      await supabase.storage
+        .from(STORAGE_BUCKET)
+        .remove([path]);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  // =========================================
+  // SAVE ACCOUNT
+  // =========================================
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (!game) {
+      setMessage("یک بازی انتخاب کن.");
+      return;
+    }
+
+    if (!title.trim()) {
+      setMessage("عنوان اکانت را وارد کن.");
+      return;
+    }
+
+    const numericPrice = Number(
+      price.replace(/,/g, "")
+    );
+
+    if (
+      !Number.isFinite(numericPrice) ||
+      numericPrice < 0
+    ) {
+      setMessage("قیمت واردشده صحیح نیست.");
+      return;
+    }
+
+    if (!accountUsername.trim()) {
+      setMessage(
+        "جیمیل یا نام کاربری اکانت را وارد کن."
+      );
+      return;
+    }
+
+    if (!accountPassword.trim()) {
+      setMessage(
+        "رمز عبور اکانت را وارد کن."
+      );
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      // =====================================
+      // EDIT
+      // =====================================
+
+      if (editingProduct) {
+        let finalImages =
+          uploadedImages.length > 0
+            ? [...uploadedImages]
+            : [];
+
+        let finalVideo =
+          uploadedVideo || null;
+
+        // Upload new images
+        if (selectedImages.length > 0) {
+          const newImages: string[] = [];
+
+          for (const file of selectedImages) {
+            const url = await uploadImage(file);
+            newImages.push(url);
+          }
+
+          finalImages = [
+            ...finalImages,
+            ...newImages,
+          ];
+        }
+
+        // Upload new video
+        if (selectedVideo) {
+          finalVideo =
+            await uploadVideo(selectedVideo);
+        }
+
+        const { data, error } =
+          await supabase.rpc(
+            "update_product_account",
+            {
+              p_id: editingProduct.id,
+              p_game: game,
+              p_title: title.trim(),
+              p_description:
+                description.trim()
+                  ? description.trim()
+                  : null,
+              p_price: numericPrice,
+
+              // حالا مقدار کامل فعلی
+              // همیشه ارسال می‌شود.
+              p_account_username:
+                accountUsername.trim(),
+
+              p_account_password:
+                accountPassword,
+
+              p_images:
+                finalImages.length > 0
+                  ? finalImages
+                  : null,
+
+              p_video_url:
+                finalVideo || null,
+            }
+          );
+
+        if (error) {
+          console.error(error);
+
+          setMessage(
+            `خطا در ویرایش اکانت: ${error.message}`
+          );
+
+          setSaving(false);
+          return;
+        }
+
+        if (data !== true) {
+          setMessage(
+            "اکانت پیدا نشد یا تغییرات ذخیره نشد."
+          );
+
+          setSaving(false);
+          return;
+        }
+
+        // Remove old images that were removed
+        const oldImages =
+          editingProduct.images || [];
+
+        const removedImages =
+          oldImages.filter(
+            (url) =>
+              !finalImages.includes(url)
+          );
+
+        for (const url of removedImages) {
+          await removeStorageFile(url);
+        }
+
+        // Remove old video if replaced
+        if (
+          editingProduct.videoUrl &&
+          editingProduct.videoUrl !== finalVideo
+        ) {
+          await removeStorageFile(
+            editingProduct.videoUrl
+          );
+        }
+
+        setMessage(
+          "اکانت با موفقیت ویرایش شد."
+        );
+
+        setShowAddModal(false);
+        resetForm();
+
+        await loadProducts();
+
+        setSaving(false);
+        return;
+      }
+
+      // =====================================
+      // ADD NEW ACCOUNT
+      // =====================================
+
+      const finalImages: string[] = [];
+
+      for (const file of selectedImages) {
+        const url = await uploadImage(file);
+        finalImages.push(url);
+      }
+
+      let finalVideo: string | null = null;
+
+      if (selectedVideo) {
+        finalVideo =
+          await uploadVideo(selectedVideo);
+      }
+
+      const { error } = await supabase
+        .from("Product")
+        .insert({
+          game,
+          title: title.trim(),
+          description:
+            description.trim()
+              ? description.trim()
+              : null,
+          price: numericPrice,
+          images: finalImages,
+          videoUrl: finalVideo,
+          accountUsername:
+            accountUsername.trim(),
+          accountPassword:
+            accountPassword,
+          isSold: false,
+          likes: 0,
+        });
+
+      if (error) {
+        console.error(error);
+
+        setMessage(
+          `خطا در ثبت اکانت: ${error.message}`
+        );
+
+        setSaving(false);
+        return;
+      }
+
+      setMessage(
+        "اکانت با موفقیت ثبت شد."
+      );
+
+      setShowAddModal(false);
+      resetForm();
+
+      await loadProducts();
+    } catch (error) {
+      console.error(error);
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "خطای نامشخص";
+
+      setMessage(
+        `خطا: ${errorMessage}`
+      );
+    }
+
+    setSaving(false);
+  }
+
+  // =========================================
+  // DELETE PRODUCT
+  // =========================================
+
+  async function deleteProduct(
+    product: Product
+  ) {
+    const confirmed = window.confirm(
+      `آیا مطمئنی می‌خواهی اکانت «${product.title}» را حذف کنی؟`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+
+    const { data, error } =
+      await supabase.rpc(
+        "delete_product_account",
+        {
+          p_id: product.id,
+        }
+      );
+
+    if (error) {
+      console.error(error);
+
+      setMessage(
+        `خطا در حذف اکانت: ${error.message}`
+      );
+
+      return;
+    }
+
+    if (data !== true) {
+      setMessage(
+        "اکانت حذف نشد؛ رکورد موردنظر پیدا نشد."
+      );
+
+      return;
+    }
+
+    setProducts((current) =>
+      current.filter(
+        (item) => item.id !== product.id
+      )
+    );
+
+    for (const image of product.images || []) {
+      await removeStorageFile(image);
+    }
+
+    if (product.videoUrl) {
+      await removeStorageFile(
+        product.videoUrl
+      );
+    }
+
+    setMessage(
+      "اکانت با موفقیت حذف شد."
+    );
+  }
+
+  // =========================================
+  // TOGGLE SOLD
+  // =========================================
+
+  async function toggleSold(
+    product: Product
+  ) {
+    setMessage("");
+
+    const { data, error } =
+      await supabase.rpc(
+        "toggle_product_sold",
+        {
+          p_id: product.id,
+        }
+      );
+
+    if (error) {
+      console.error(error);
+
+      setMessage(
+        `خطا در تغییر وضعیت: ${error.message}`
+      );
+
+      return;
+    }
+
+    if (data !== true) {
+      setMessage(
+        "وضعیت اکانت تغییر نکرد."
+      );
+
+      return;
+    }
+
+    setProducts((current) =>
+      current.map((item) =>
+        item.id === product.id
+          ? {
+              ...item,
+              isSold: !product.isSold,
+            }
+          : item
+      )
+    );
+
+    setMessage(
+      product.isSold
+        ? "اکانت دوباره فعال شد."
+        : "اکانت به حالت فروخته‌شده رفت."
+    );
+  }
+
+  // =========================================
+  // FORMAT PRICE
+  // =========================================
+
+  function formatPrice(price: number) {
+    return new Intl.NumberFormat(
+      "fa-IR"
+    ).format(price);
+  }
+
+  const activeGames = games.filter(
+    (item) => item.active
+  );
+
+  const soldCount = products.filter(
+    (item) => item.isSold
+  ).length;
+
+  const availableCount =
+    products.length - soldCount;
+
+  // =========================================
+  // UI
+  // =========================================
+
+  return (
+    <main
+      dir="rtl"
+      className="min-h-screen bg-[#07070a] text-white"
+    >
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+
+        {/* HEADER */}
+
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-black">
+              پنل مدیریت
+            </h1>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              مدیریت اکانت‌های بازی و بازی‌ها
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() =>
+                setShowGameModal(true)
+              }
+              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-bold transition hover:bg-white/10"
+            >
+              🎮 مدیریت بازی‌ها
+            </button>
+
+            <button
+              onClick={openAddModal}
+              className="rounded-2xl bg-white px-5 py-3 font-bold text-black transition hover:bg-zinc-200"
+            >
+              + افزودن اکانت
+            </button>
+          </div>
+        </div>
+
+        {/* MESSAGE */}
+
+        {message && (
+          <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm">
+            {message}
+          </div>
+        )}
+
+        {/* STATS */}
+
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <p className="text-sm text-zinc-400">
+              کل اکانت‌ها
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {products.length}
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <p className="text-sm text-zinc-400">
+              اکانت‌های موجود
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {availableCount}
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <p className="text-sm text-zinc-400">
+              فروخته‌شده
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {soldCount}
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <p className="text-sm text-zinc-400">
+              بازی‌ها
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {games.length}
+            </p>
+          </div>
+        </div>
+
+        {/* PRODUCTS */}
+
+        <section>
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-black">
+              اکانت‌ها
+            </h2>
+
+            <button
+              onClick={loadProducts}
+              className="rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/5"
+            >
+              ↻ بروزرسانی
+            </button>
+          </div>
+
+          {loadingProducts ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-zinc-400">
+              در حال دریافت اکانت‌ها...
+            </div>
+          ) : products.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-zinc-400">
+              هنوز هیچ اکانتی ثبت نشده است.
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="rounded-3xl border border-white/10 bg-white/5 p-5"
+                >
+                  <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+
+                    {/* PRODUCT INFO */}
+
+                    <div className="flex min-w-0 gap-4">
+                      {product.images?.[0] ? (
+                        <img
+                          src={product.images[0]}
+                          alt={product.title}
+                          className="h-24 w-24 rounded-2xl object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-white/5 text-3xl">
+                          🎮
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap gap-2">
+                          <span className="rounded-lg bg-white/10 px-2 py-1 text-xs text-zinc-300">
+                            {product.game}
+                          </span>
+
+                          {product.isSold ? (
+                            <span className="rounded-lg bg-red-500/10 px-2 py-1 text-xs text-red-400">
+                              فروخته شد
+                            </span>
+                          ) : (
+                            <span className="rounded-lg bg-green-500/10 px-2 py-1 text-xs text-green-400">
+                              موجود
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="truncate text-lg font-bold">
+                          {product.title}
+                        </h3>
+
+                        <p className="mt-2 text-sm text-zinc-400">
+                          {formatPrice(
+                            product.price
+                          )}{" "}
+                          تومان
+                        </p>
+
+                        <p className="mt-1 text-xs text-zinc-500">
+                          ❤️ {product.likes}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* ACTIONS */}
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() =>
+                          openEditModal(product)
+                        }
+                        disabled={loadingEdit}
+                        className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold hover:bg-white/10 disabled:opacity-50"
+                      >
+                        {loadingEdit
+                          ? "در حال دریافت..."
+                          : "ویرایش"}
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          toggleSold(product)
+                        }
+                        className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold hover:bg-white/10"
+                      >
+                        {product.isSold
+                          ? "فعال کردن"
+                          : "فروخته شد"}
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          deleteProduct(product)
+                        }
+                        className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm font-bold text-red-400 hover:bg-red-500/10"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ===================================== */}
+      {/* ACCOUNT MODAL */}
+      {/* ===================================== */}
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/10 bg-[#101014] p-6 shadow-2xl">
+
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black">
+                  {editingProduct
+                    ? "ویرایش اکانت"
+                    : "افزودن اکانت"}
+                </h2>
+
+                <p className="mt-1 text-sm text-zinc-500">
+                  اطلاعات اکانت را وارد کن
+                </p>
+              </div>
+
+              <button
+                onClick={closeAddModal}
+                className="rounded-xl px-3 py-2 text-zinc-400 hover:bg-white/5 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-5"
+            >
+
+              {/* GAME */}
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-bold">
+                    بازی
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowGameModal(true)
+                    }
+                    className="text-xs font-bold text-blue-400 hover:text-blue-300"
+                  >
+                    + افزودن بازی
+                  </button>
+                </div>
+
+                <select
+                  value={game}
+                  onChange={(event) =>
+                    setGame(event.target.value)
+                  }
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                >
+                  <option value="">
+                    انتخاب بازی
+                  </option>
+
+                  {activeGames.map(
+                    (gameItem) => (
+                      <option
+                        key={gameItem.id}
+                        value={gameItem.name}
+                      >
+                        {gameItem.name}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* TITLE */}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold">
+                  عنوان اکانت
+                </label>
+
+                <input
+                  value={title}
+                  onChange={(event) =>
+                    setTitle(event.target.value)
+                  }
+                  placeholder="مثلاً اکانت لول بالا"
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold">
+                  توضیحات
+                </label>
+
+                <textarea
+                  value={description}
+                  onChange={(event) =>
+                    setDescription(
+                      event.target.value
+                    )
+                  }
+                  rows={4}
+                  placeholder="توضیحات اکانت..."
+                  className="w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
+                />
+              </div>
+
+              {/* PRICE */}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold">
+                  قیمت
+                </label>
+
+                <input
+                  value={price}
+                  onChange={(event) =>
+                    setPrice(event.target.value)
+                  }
+                  inputMode="numeric"
+                  placeholder="مثلاً 2500000"
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
+                />
+              </div>
+
+              {/* USERNAME / EMAIL */}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold">
+                  جیمیل / نام کاربری اکانت
+                </label>
+
+                <input
+                  value={accountUsername}
+                  onChange={(event) =>
+                    setAccountUsername(
+                      event.target.value
+                    )
+                  }
+                  type="text"
+                  name="game-account-username"
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  placeholder="جیمیل یا نام کاربری اکانت"
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
+                />
+              </div>
+
+              {/* PASSWORD */}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold">
+                  رمز عبور اکانت
+                </label>
+
+                <input
+                  value={accountPassword}
+                  onChange={(event) =>
+                    setAccountPassword(
+                      event.target.value
+                    )
+                  }
+                  type="text"
+                  name="game-account-password"
+                  autoComplete="new-password"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  placeholder="رمز عبور اکانت"
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
+                />
+              </div>
+
+              {/* IMAGES */}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold">
+                  تصاویر
+                </label>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="block w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-300"
+                />
+
+                {uploadedImages.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-3">
+                    {uploadedImages.map(
+                      (image, index) => (
+                        <img
+                          key={`${image}-${index}`}
+                          src={image}
+                          alt=""
+                          className="aspect-square w-full rounded-xl object-cover"
+                        />
+                      )
+                    )}
+                  </div>
+                )}
+
+                {selectedImages.length > 0 && (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {selectedImages.length} تصویر
+                    جدید انتخاب شده
+                  </p>
+                )}
+              </div>
+
+              {/* VIDEO */}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold">
+                  ویدیو
+                </label>
+
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoChange}
+                  className="block w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-300"
+                />
+
+                {uploadedVideo && (
+                  <p className="mt-2 text-xs text-green-400">
+                    ویدیوی فعلی ثبت شده است.
+                  </p>
+                )}
+
+                {selectedVideo && (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    ویدیوی جدید:{" "}
+                    {selectedVideo.name}
+                  </p>
+                )}
+              </div>
+
+              {/* BUTTONS */}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeAddModal}
+                  disabled={saving}
+                  className="flex-1 rounded-2xl border border-white/10 px-5 py-3 font-bold hover:bg-white/5 disabled:opacity-50"
+                >
+                  انصراف
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 rounded-2xl bg-white px-5 py-3 font-bold text-black hover:bg-zinc-200 disabled:opacity-50"
+                >
+                  {saving
+                    ? "در حال ذخیره..."
+                    : editingProduct
+                    ? "ذخیره تغییرات"
+                    : "ثبت اکانت"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================== */}
+      {/* GAME MANAGEMENT MODAL */}
+      {/* ===================================== */}
+
+      {showGameModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-white/10 bg-[#101014] p-6 shadow-2xl">
+
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black">
+                  مدیریت بازی‌ها
+                </h2>
+
+                <p className="mt-1 text-sm text-zinc-500">
+                  بازی‌های سایت را مدیریت کن
+                </p>
+              </div>
+
+              <button
+                onClick={() =>
+                  setShowGameModal(false)
+                }
+                className="rounded-xl px-3 py-2 text-zinc-400 hover:bg-white/5 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* ADD GAME */}
+
+            <form
+              onSubmit={handleAddGame}
+              className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4"
+            >
+              <label className="mb-2 block text-sm font-bold">
+                افزودن بازی جدید
+              </label>
+
+              <div className="flex gap-2">
+                <input
+                  value={newGameName}
+                  onChange={(event) =>
+                    setNewGameName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="مثلاً Clash Royale"
+                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
+                />
+
+                <button
+                  type="submit"
+                  disabled={addingGame}
+                  className="rounded-xl bg-white px-5 py-3 font-bold text-black disabled:opacity-50"
+                >
+                  {addingGame
+                    ? "..."
+                    : "افزودن"}
+                </button>
+              </div>
+            </form>
+
+            {/* GAMES LIST */}
+
+            <div className="space-y-3">
+              {loadingGames ? (
+                <div className="rounded-2xl bg-white/5 p-5 text-center text-zinc-400">
+                  در حال دریافت بازی‌ها...
+                </div>
+              ) : games.length === 0 ? (
+                <div className="rounded-2xl bg-white/5 p-5 text-center text-zinc-400">
+                  هنوز بازی‌ای ثبت نشده است.
+                </div>
+              ) : (
+                games.map((gameItem) => (
+                  <div
+                    key={gameItem.id}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold">
+                        {gameItem.name}
+                      </p>
+
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {gameItem.active
+                          ? "فعال"
+                          : "غیرفعال"}
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={() =>
+                          toggleGame(gameItem)
+                        }
+                        className={`rounded-xl px-3 py-2 text-xs font-bold ${
+                          gameItem.active
+                            ? "bg-green-500/10 text-green-400"
+                            : "bg-zinc-500/10 text-zinc-400"
+                        }`}
+                      >
+                        {gameItem.active
+                          ? "فعال"
+                          : "غیرفعال"}
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          deleteGame(gameItem)
+                        }
+                        className="rounded-xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              onClick={loadGames}
+              className="mt-5 w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/5"
+            >
+              ↻ بروزرسانی بازی‌ها
+            </button>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
