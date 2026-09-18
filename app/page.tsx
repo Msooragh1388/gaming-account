@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -684,20 +685,16 @@ export default function Home() {
     const hasVideo =
       Boolean(selectedProduct.videoUrl);
 
-    // سوایپ به راست = آیتم بعدی
     if (deltaX > 0) {
       setSelectedImage((current) => {
-        // اگر روی ویدیو هستیم، به عکس اول برگرد
         if (current === -1) {
           return 0;
         }
 
-        // رفتن به عکس بعدی
         if (current < lastImageIndex) {
           return current + 1;
         }
 
-        // آخرین عکس → ویدیو
         if (
           current === lastImageIndex &&
           hasVideo
@@ -711,14 +708,11 @@ export default function Home() {
       return;
     }
 
-    // سوایپ به چپ = آیتم قبلی
     setSelectedImage((current) => {
-      // ویدیو → آخرین عکس
       if (current === -1) {
         return lastImageIndex;
       }
 
-      // عکس قبلی
       if (current > 0) {
         return current - 1;
       }
@@ -800,6 +794,10 @@ export default function Home() {
           p_product_title: product.title,
           p_game: product.game,
           p_price: Number(product.price),
+
+          // اطلاعات فرم سفارش
+          p_full_name: cleanName,
+          p_phone_number: cleanPhone,
         });
 
       if (error) {

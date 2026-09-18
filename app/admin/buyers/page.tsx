@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -51,15 +52,15 @@ export default function AdminBuyersPage() {
     setLoading(true);
     setMessage("");
 
-    const { data, error } = await supabase
-      .from("Purchase")
-      .select("*")
-      .order("createdAt", {
-        ascending: false,
-      });
+    const { data, error } = await supabase.rpc(
+      "get_admin_purchases"
+    );
 
     if (error) {
-      console.error(error);
+      console.error(
+        "get_admin_purchases error:",
+        error
+      );
 
       setMessage(
         `خطا در دریافت اطلاعات خریداران: ${error.message}`
@@ -69,7 +70,7 @@ export default function AdminBuyersPage() {
       return;
     }
 
-    setPurchases(data || []);
+    setPurchases((data || []) as Purchase[]);
     setLoading(false);
   }
 
@@ -83,7 +84,6 @@ export default function AdminBuyersPage() {
       className="min-h-screen bg-[#07070a] text-white"
     >
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-        {/* Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-black">
@@ -112,7 +112,6 @@ export default function AdminBuyersPage() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
             <div className="text-sm text-zinc-400">
@@ -164,7 +163,6 @@ export default function AdminBuyersPage() {
                 key={purchase.id}
                 className="rounded-3xl border border-white/10 bg-white/5 p-5 transition hover:bg-white/[0.07]"
               >
-                {/* Purchase header */}
                 <div className="mb-5 flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-xs text-zinc-500">
@@ -184,7 +182,6 @@ export default function AdminBuyersPage() {
                   </div>
                 </div>
 
-                {/* Buyer information */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <InfoBox
                     title="نام و نام خانوادگی"

@@ -7,13 +7,15 @@ import { supabase } from "@/lib/supabase";
 
 type Product = {
   id: number;
+  game: string;
   title: string;
-  gameId: number | null;
-  price: number | null;
-  sold: boolean;
-  createdAt: string | null;
+  description: string | null;
+  price: number;
   images: string[] | null;
   videoUrl: string | null;
+  isSold: boolean;
+  likes: number;
+  createdAt: string;
 };
 
 function AccountsPageContent() {
@@ -33,7 +35,9 @@ function AccountsPageContent() {
     const { data, error } = await supabase
       .from("ProductPublic")
       .select("*")
-      .order("id", { ascending: false });
+      .order("createdAt", {
+        ascending: false,
+      });
 
     if (error) {
       console.error(error);
@@ -46,7 +50,7 @@ function AccountsPageContent() {
       return;
     }
 
-    setProducts(data || []);
+    setProducts((data || []) as Product[]);
     setLoading(false);
   }
 
@@ -54,17 +58,19 @@ function AccountsPageContent() {
     loadProducts();
   }, []);
 
-  const filteredProducts = products.filter((product) => {
-    if (filter === "available") {
-      return !product.sold;
-    }
+  const filteredProducts = products.filter(
+    (product) => {
+      if (filter === "available") {
+        return !product.isSold;
+      }
 
-    if (filter === "sold") {
-      return product.sold;
-    }
+      if (filter === "sold") {
+        return product.isSold;
+      }
 
-    return true;
-  });
+      return true;
+    }
+  );
 
   const title =
     filter === "available"
@@ -76,18 +82,27 @@ function AccountsPageContent() {
   async function toggleSold(
     product: Product
   ) {
-    const { error } = await supabase
-      .from("Product")
-      .update({
-        sold: !product.sold,
-      })
-      .eq("id", product.id);
+    const { data, error } =
+      await supabase.rpc(
+        "toggle_product_sold",
+        {
+          p_id: product.id,
+        }
+      );
 
     if (error) {
       console.error(error);
 
       setMessage(
         `خطا در تغییر وضعیت اکانت: ${error.message}`
+      );
+
+      return;
+    }
+
+    if (data !== true) {
+      setMessage(
+        "وضعیت اکانت تغییر نکرد."
       );
 
       return;
@@ -131,7 +146,6 @@ function AccountsPageContent() {
       className="min-h-screen bg-[#07070a] text-white"
     >
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-        {/* Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-black">
@@ -151,7 +165,6 @@ function AccountsPageContent() {
           </button>
         </div>
 
-        {/* Filter buttons */}
         <div className="mb-8 flex flex-wrap gap-3">
           <button
             onClick={() =>
@@ -199,14 +212,12 @@ function AccountsPageContent() {
           </button>
         </div>
 
-        {/* Message */}
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
             {message}
           </div>
         )}
 
-        {/* Loading */}
         {loading ? (
           <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-zinc-400">
             در حال دریافت اکانت‌ها...
@@ -222,7 +233,6 @@ function AccountsPageContent() {
                 key={product.id}
                 className="overflow-hidden rounded-3xl border border-white/10 bg-white/5"
               >
-                {/* Image */}
                 <div className="aspect-video bg-black">
                   {product.images &&
                   product.images.length > 0 ? (
@@ -246,12 +256,12 @@ function AccountsPageContent() {
 
                     <span
                       className={`rounded-xl px-3 py-1 text-xs font-bold ${
-                        product.sold
+                        product.isSold
                           ? "bg-red-500/10 text-red-300"
                           : "bg-green-500/10 text-green-300"
                       }`}
                     >
-                      {product.sold
+                      {product.isSold
                         ? "فروخته شده"
                         : "موجود"}
                     </span>
@@ -261,7 +271,9 @@ function AccountsPageContent() {
                     {product.price !== null
                       ? `${new Intl.NumberFormat(
                           "fa-IR"
-                        ).format(product.price)} تومان`
+                        ).format(
+                          product.price
+                        )} تومان`
                       : "قیمت نامشخص"}
                   </div>
 
@@ -283,14 +295,16 @@ function AccountsPageContent() {
                       }
                       className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-bold transition hover:bg-white/10"
                     >
-                      {product.sold
+                      {product.isSold
                         ? "علامت‌گذاری به‌عنوان موجود"
                         : "علامت‌گذاری به‌عنوان فروخته‌شده"}
                     </button>
 
                     <button
                       onClick={() =>
-                        deleteProduct(product.id)
+                        deleteProduct(
+                          product.id
+                        )
                       }
                       className="rounded-2xl bg-red-500/10 px-4 py-3 font-bold text-red-300 transition hover:bg-red-500/20"
                     >
