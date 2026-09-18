@@ -1,4 +1,4 @@
-```ts
+
 import { NextResponse } from "next/server";
 
 const ADMIN_COOKIE_NAME = "admin_session";
@@ -20,4 +20,3 @@ export async function POST() {
 
   return response;
 }
-```
