@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Game = {
@@ -35,6 +35,27 @@ type PurchasedAccount = {
   price: number;
 };
 
+function HeartIcon({ liked }: { liked: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill={liked ? "currentColor" : "none"}
+      xmlns="http://www.w3.org/2000/svg"
+      className={`h-5 w-5 transition-all duration-200 ${
+        liked ? "scale-110" : "scale-100"
+      }`}
+    >
+      <path
+        d="M20.84 4.61C19.77 3.54 18.35 3 16.84 3C15.33 3 13.91 3.54 12.84 4.61L12 5.45L11.16 4.61C8.94 2.39 5.34 2.39 3.12 4.61C0.9 6.83 0.9 10.43 3.12 12.65L12 21.53L20.88 12.65C23.1 10.43 23.1 6.83 20.88 4.61H20.84Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function BookmarkIcon({ saved }: { saved: boolean }) {
   return (
     <svg
@@ -57,11 +78,7 @@ function BookmarkIcon({ saved }: { saved: boolean }) {
 
 function EyeIcon({ open }: { open: boolean }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-5 w-5"
-    >
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
       {open ? (
         <>
           <path
@@ -107,10 +124,10 @@ export default function Home() {
   const [games, setGames] = useState<Game[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
 
-  const [activeCategory, setActiveCategory] =
-    useState("همه بازی‌ها");
+  const [activeCategory, setActiveCategory] = useState("همه بازی‌ها");
 
   const [liked, setLiked] = useState<number[]>([]);
+  const [liking, setLiking] = useState<number[]>([]);
   const [saved, setSaved] = useState<number[]>([]);
   const [cart, setCart] = useState<number[]>([]);
 
@@ -128,23 +145,23 @@ export default function Home() {
   const [selectedImage, setSelectedImage] = useState(0);
 
   const [cartOpen, setCartOpen] = useState(false);
-
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  const [checkoutLoading, setCheckoutLoading] =
-    useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  const [purchaseComplete, setPurchaseComplete] =
-    useState(false);
+  const [purchaseComplete, setPurchaseComplete] = useState(false);
 
   const [purchasedAccounts, setPurchasedAccounts] =
     useState<PurchasedAccount[]>([]);
 
   const [visiblePasswords, setVisiblePasswords] =
     useState<number[]>([]);
+
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   async function loadGames() {
     setLoadingGames(true);
@@ -153,17 +170,11 @@ export default function Home() {
       .from("Game")
       .select("*")
       .eq("active", true)
-      .order("createdAt", {
-        ascending: true,
-      });
+      .order("createdAt", { ascending: true });
 
     if (error) {
       console.error(error);
-
-      setMessage(
-        `خطا در دریافت بازی‌ها: ${error.message}`
-      );
-
+      setMessage(`خطا در دریافت بازی‌ها: ${error.message}`);
       setLoadingGames(false);
       return;
     }
@@ -178,48 +189,97 @@ export default function Home() {
     const { data, error } = await supabase
       .from("ProductPublic")
       .select("*")
-      .order("createdAt", {
-        ascending: false,
-      });
+      .order("createdAt", { ascending: false });
 
     if (error) {
       console.error(error);
-
-      setMessage(
-        `خطا در دریافت اکانت‌ها: ${error.message}`
-      );
-
+      setMessage(`خطا در دریافت اکانت‌ها: ${error.message}`);
       setLoadingProducts(false);
       return;
     }
 
-    setProducts(data || []);
+    let productsWithLikes = data || [];
+
+    try {
+      const likesResponse = await fetch("/api/likes/counts");
+      const likesData = await likesResponse.json();
+
+      if (
+        likesResponse.ok &&
+        likesData?.success &&
+        Array.isArray(likesData.counts)
+      ) {
+        const likesMap = new Map<number, number>();
+
+        for (const item of likesData.counts) {
+          const productId = Number(item.productId);
+          const likes = Number(item.likes);
+
+          if (Number.isInteger(productId) && productId > 0) {
+            likesMap.set(
+              productId,
+              Number.isFinite(likes) ? likes : 0
+            );
+          }
+        }
+
+        productsWithLikes = productsWithLikes.map((product) => ({
+          ...product,
+          likes: likesMap.get(Number(product.id)) ?? 0,
+        }));
+      }
+    } catch (error) {
+      console.error("Load like counts error:", error);
+    }
+
+    setProducts(productsWithLikes);
     setLoadingProducts(false);
+  }
+
+  async function loadUserLikes() {
+    const token = localStorage.getItem("gaming_account_token");
+    const user = localStorage.getItem("gaming_account_user");
+
+    if (!token || !user) {
+      setLiked([]);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/likes/list", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        setLiked([]);
+        return;
+      }
+
+      const likedIds = Array.isArray(data.likedProductIds)
+        ? data.likedProductIds
+            .map((id: unknown) => Number(id))
+            .filter(
+              (id: number) => Number.isInteger(id) && id > 0
+            )
+        : [];
+
+      setLiked(likedIds);
+    } catch (error) {
+      console.error("Load likes error:", error);
+      setLiked([]);
+    }
   }
 
   useEffect(() => {
     loadGames();
     loadProducts();
-
-    const savedLikes = localStorage.getItem(
-      "gaming_account_liked"
-    );
-
-    if (savedLikes) {
-      try {
-        const parsedLikes = JSON.parse(savedLikes);
-
-        if (Array.isArray(parsedLikes)) {
-          setLiked(
-            parsedLikes.map((id) => Number(id))
-          );
-        }
-      } catch {
-        localStorage.removeItem(
-          "gaming_account_liked"
-        );
-      }
-    }
+    loadUserLikes();
 
     const savedProducts = localStorage.getItem(
       "gaming_account_saved"
@@ -230,40 +290,28 @@ export default function Home() {
         const parsedSaved = JSON.parse(savedProducts);
 
         if (Array.isArray(parsedSaved)) {
-          setSaved(
-            parsedSaved.map((id) => Number(id))
-          );
+          setSaved(parsedSaved.map((id) => Number(id)));
         }
       } catch {
-        localStorage.removeItem(
-          "gaming_account_saved"
-        );
+        localStorage.removeItem("gaming_account_saved");
       }
     }
 
-    const savedCart = localStorage.getItem(
-      "gaming_account_cart"
-    );
+    const savedCart = localStorage.getItem("gaming_account_cart");
 
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
 
         if (Array.isArray(parsedCart)) {
-          setCart(
-            parsedCart.map((id) => Number(id))
-          );
+          setCart(parsedCart.map((id) => Number(id)));
         }
       } catch {
-        localStorage.removeItem(
-          "gaming_account_cart"
-        );
+        localStorage.removeItem("gaming_account_cart");
       }
     }
 
-    const params = new URLSearchParams(
-      window.location.search
-    );
+    const params = new URLSearchParams(window.location.search);
 
     if (params.get("cart") === "open") {
       setCartOpen(true);
@@ -277,9 +325,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!message) {
-      return;
-    }
+    if (!message) return;
 
     const timer = setTimeout(() => {
       setMessage("");
@@ -288,58 +334,137 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [message]);
 
-  const normalizedSearch =
-    searchText.trim().toLowerCase();
+  const normalizedSearch = searchText.trim().toLowerCase();
 
-  const filteredProducts = products.filter(
-    (product) => {
-      const matchesCategory =
-        activeCategory === "همه بازی‌ها" ||
-        product.game === activeCategory;
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory =
+      activeCategory === "همه بازی‌ها" ||
+      product.game === activeCategory;
 
-      const matchesSearch =
-        normalizedSearch === "" ||
-        product.title
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        product.game
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        (product.description || "")
-          .toLowerCase()
-          .includes(normalizedSearch);
+    const matchesSearch =
+      normalizedSearch === "" ||
+      product.title.toLowerCase().includes(normalizedSearch) ||
+      product.game.toLowerCase().includes(normalizedSearch) ||
+      (product.description || "")
+        .toLowerCase()
+        .includes(normalizedSearch);
 
-      return matchesCategory && matchesSearch;
-    }
-  );
+    return matchesCategory && matchesSearch;
+  });
 
   const cartProducts = products.filter(
     (product) =>
-      cart.includes(product.id) &&
-      !product.isSold
+      cart.includes(product.id) && !product.isSold
   );
 
   const cartTotal = cartProducts.reduce(
-    (total, product) =>
-      total + Number(product.price),
+    (total, product) => total + Number(product.price),
     0
   );
 
-  function toggleLike(id: number) {
-    setLiked((current) => {
-      const isAlreadyLiked = current.includes(id);
+  async function toggleLike(id: number) {
+    const token = localStorage.getItem("gaming_account_token");
+    const user = localStorage.getItem("gaming_account_user");
 
-      const newLiked = isAlreadyLiked
-        ? current.filter((item) => item !== id)
-        : [...current, id];
+    if (!token || !user) {
+      setMessage("برای لایک کردن ابتدا وارد حساب شوید");
 
-      localStorage.setItem(
-        "gaming_account_liked",
-        JSON.stringify(newLiked)
+      setTimeout(() => {
+        window.location.href = "/profile";
+      }, 700);
+
+      return;
+    }
+
+    if (liking.includes(id)) {
+      return;
+    }
+
+    setLiking((current) =>
+      current.includes(id) ? current : [...current, id]
+    );
+
+    try {
+      const response = await fetch("/api/likes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          productId: id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        if (
+          data?.loggedIn === false ||
+          response.status === 401
+        ) {
+          setMessage(
+            "برای لایک کردن ابتدا وارد حساب شوید"
+          );
+
+          setTimeout(() => {
+            window.location.href = "/profile";
+          }, 700);
+        } else {
+          setMessage(
+            data?.error || "ثبت لایک ناموفق بود"
+          );
+        }
+
+        return;
+      }
+
+      const likedNow = Boolean(data.liked);
+      const likesNow = Number(data.likes);
+
+      setLiked((current) => {
+        if (likedNow) {
+          if (current.includes(id)) {
+            return current;
+          }
+
+          return [...current, id];
+        }
+
+        return current.filter((item) => item !== id);
+      });
+
+      setProducts((current) =>
+        current.map((product) =>
+          product.id === id
+            ? {
+                ...product,
+                likes: Number.isFinite(likesNow)
+                  ? likesNow
+                  : product.likes,
+              }
+            : product
+        )
       );
 
-      return newLiked;
-    });
+      setSelectedProduct((current) =>
+        current && current.id === id
+          ? {
+              ...current,
+              likes: Number.isFinite(likesNow)
+                ? likesNow
+                : current.likes,
+            }
+          : current
+      );
+    } catch (error) {
+      console.error("Like error:", error);
+      setMessage("خطا در ارتباط با سرور");
+    } finally {
+      setLiking((current) =>
+        current.filter((item) => item !== id)
+      );
+    }
   }
 
   function toggleSave(id: number) {
@@ -366,13 +491,9 @@ export default function Home() {
   }
 
   function addToCart(id: number) {
-    const product = products.find(
-      (item) => item.id === id
-    );
+    const product = products.find((item) => item.id === id);
 
-    if (!product) {
-      return;
-    }
+    if (!product) return;
 
     if (product.isSold) {
       setMessage("این اکانت فروخته شده است");
@@ -380,9 +501,7 @@ export default function Home() {
     }
 
     if (cart.includes(id)) {
-      setMessage(
-        "این اکانت قبلاً در سبد خرید است"
-      );
+      setMessage("این اکانت قبلاً در سبد خرید است");
       return;
     }
 
@@ -401,16 +520,12 @@ export default function Home() {
       return newCart;
     });
 
-    setMessage(
-      "اکانت به سبد خرید اضافه شد"
-    );
+    setMessage("اکانت به سبد خرید اضافه شد");
   }
 
   function removeFromCart(id: number) {
     setCart((current) => {
-      const newCart = current.filter(
-        (item) => item !== id
-      );
+      const newCart = current.filter((item) => item !== id);
 
       localStorage.setItem(
         "gaming_account_cart",
@@ -424,25 +539,25 @@ export default function Home() {
       return newCart;
     });
 
-    setMessage(
-      "اکانت از سبد خرید حذف شد"
-    );
+    setMessage("اکانت از سبد خرید حذف شد");
   }
 
   function formatPrice(price: number) {
-    return new Intl.NumberFormat(
-      "fa-IR"
-    ).format(price);
+    return new Intl.NumberFormat("fa-IR").format(price);
   }
 
   function openProduct(product: Product) {
     setSelectedProduct(product);
     setSelectedImage(0);
+    touchStartX.current = null;
+    touchStartY.current = null;
   }
 
   function closeProduct() {
     setSelectedProduct(null);
     setSelectedImage(0);
+    touchStartX.current = null;
+    touchStartY.current = null;
   }
 
   function openCart() {
@@ -458,9 +573,7 @@ export default function Home() {
 
   function openCheckout() {
     if (cartProducts.length === 0) {
-      setMessage(
-        "سبد خرید شما خالی است"
-      );
+      setMessage("سبد خرید شما خالی است");
       return;
     }
 
@@ -488,21 +601,95 @@ export default function Home() {
   }
 
   function closeCheckout() {
-    if (checkoutLoading) {
-      return;
-    }
-
+    if (checkoutLoading) return;
     setCheckoutOpen(false);
   }
 
   function togglePassword(id: number) {
     setVisiblePasswords((current) =>
       current.includes(id)
-        ? current.filter(
-            (item) => item !== id
-          )
+        ? current.filter((item) => item !== id)
         : [...current, id]
     );
+  }
+
+  function handleTouchStart(
+    event: React.TouchEvent<HTMLDivElement>
+  ) {
+    if (
+      !selectedProduct ||
+      selectedImage < 0 ||
+      !selectedProduct.images ||
+      selectedProduct.images.length <= 1
+    ) {
+      return;
+    }
+
+    const touch = event.touches[0];
+
+    if (!touch) return;
+
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+  }
+
+  function handleTouchEnd(
+    event: React.TouchEvent<HTMLDivElement>
+  ) {
+    if (
+      !selectedProduct ||
+      selectedImage < 0 ||
+      !selectedProduct.images ||
+      selectedProduct.images.length <= 1
+    ) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      return;
+    }
+
+    if (
+      touchStartX.current === null ||
+      touchStartY.current === null
+    ) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+
+    if (!touch) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      return;
+    }
+
+    const deltaX =
+      touch.clientX - touchStartX.current;
+
+    const deltaY =
+      touch.clientY - touchStartY.current;
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    if (
+      Math.abs(deltaX) < 50 ||
+      Math.abs(deltaX) <= Math.abs(deltaY)
+    ) {
+      return;
+    }
+
+    const imageCount =
+      selectedProduct.images.length;
+
+    if (deltaX < 0) {
+      setSelectedImage((current) =>
+        Math.min(current + 1, imageCount - 1)
+      );
+    } else {
+      setSelectedImage((current) =>
+        Math.max(current - 1, 0)
+      );
+    }
   }
 
   async function completePurchase() {
@@ -530,8 +717,7 @@ export default function Home() {
 
     const cleanName = fullName.trim();
 
-    const cleanPhone =
-      phoneNumber.replace(/\s/g, "");
+    const cleanPhone = phoneNumber.replace(/\s/g, "");
 
     if (!cleanName) {
       setMessage(
@@ -562,10 +748,7 @@ export default function Home() {
     }
 
     if (cartProducts.length === 0) {
-      setMessage(
-        "سبد خرید شما خالی است"
-      );
-
+      setMessage("سبد خرید شما خالی است");
       setCheckoutOpen(false);
       return;
     }
@@ -576,16 +759,13 @@ export default function Home() {
 
     for (const product of cartProducts) {
       const { data, error } =
-        await supabase.rpc(
-          "create_purchase",
-          {
-            p_token: token,
-            p_product_id: product.id,
-            p_product_title: product.title,
-            p_game: product.game,
-            p_price: Number(product.price),
-          }
-        );
+        await supabase.rpc("create_purchase", {
+          p_token: token,
+          p_product_id: product.id,
+          p_product_title: product.title,
+          p_game: product.game,
+          p_price: Number(product.price),
+        });
 
       if (error) {
         console.error(
@@ -614,25 +794,17 @@ export default function Home() {
       }
 
       purchased.push({
-        purchaseId: Number(
-          data.purchaseId
-        ),
-        productId: Number(
-          data.productId
-        ),
-        productTitle:
-          data.productTitle,
+        purchaseId: Number(data.purchaseId),
+        productId: Number(data.productId),
+        productTitle: data.productTitle,
         game: data.game,
-        accountUsername:
-          data.accountUsername,
-        accountPassword:
-          data.accountPassword,
+        accountUsername: data.accountUsername,
+        accountPassword: data.accountPassword,
         price: Number(data.price),
       });
     }
 
     setPurchasedAccounts(purchased);
-
     setVisiblePasswords([]);
 
     setCart([]);
@@ -649,8 +821,7 @@ export default function Home() {
     setProducts((current) =>
       current.map((product) =>
         purchased.some(
-          (item) =>
-            item.productId === product.id
+          (item) => item.productId === product.id
         )
           ? {
               ...product,
@@ -661,6 +832,7 @@ export default function Home() {
     );
 
     setCheckoutLoading(false);
+
     setCheckoutOpen(false);
     setCartOpen(false);
 
@@ -689,9 +861,7 @@ export default function Home() {
 
           <button
             onClick={() => {
-              setSearchOpen(
-                (current) => !current
-              );
+              setSearchOpen((current) => !current);
 
               if (searchOpen) {
                 setSearchText("");
@@ -715,9 +885,7 @@ export default function Home() {
                 autoFocus
                 value={searchText}
                 onChange={(event) =>
-                  setSearchText(
-                    event.target.value
-                  )
+                  setSearchText(event.target.value)
                 }
                 placeholder="نام بازی، عنوان اکانت یا توضیحات..."
                 className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-400"
@@ -725,9 +893,7 @@ export default function Home() {
 
               {searchText && (
                 <button
-                  onClick={() =>
-                    setSearchText("")
-                  }
+                  onClick={() => setSearchText("")}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                 >
                   ✕
@@ -779,13 +945,10 @@ export default function Home() {
         <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none]">
           <button
             onClick={() =>
-              setActiveCategory(
-                "همه بازی‌ها"
-              )
+              setActiveCategory("همه بازی‌ها")
             }
             className={`whitespace-nowrap rounded-2xl border px-4 py-2.5 text-xs font-medium transition ${
-              activeCategory ===
-              "همه بازی‌ها"
+              activeCategory === "همه بازی‌ها"
                 ? "border-white bg-white text-slate-950"
                 : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
             }`}
@@ -802,13 +965,10 @@ export default function Home() {
               <button
                 key={game.id}
                 onClick={() =>
-                  setActiveCategory(
-                    game.name
-                  )
+                  setActiveCategory(game.name)
                 }
                 className={`whitespace-nowrap rounded-2xl border px-4 py-2.5 text-xs font-medium transition ${
-                  activeCategory ===
-                  game.name
+                  activeCategory === game.name
                     ? "border-white bg-white text-slate-950"
                     : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
                 }`}
@@ -846,9 +1006,7 @@ export default function Home() {
 
         {loadingProducts ? (
           <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center">
-            <div className="text-3xl">
-              🎮
-            </div>
+            <div className="text-3xl">🎮</div>
 
             <p className="mt-3 text-sm text-slate-400">
               در حال دریافت اکانت‌ها...
@@ -856,9 +1014,7 @@ export default function Home() {
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-12 text-center">
-            <div className="text-4xl">
-              🔎
-            </div>
+            <div className="text-4xl">🔎</div>
 
             <h4 className="mt-4 font-bold">
               اکانتی پیدا نشد
@@ -872,154 +1028,145 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredProducts.map(
-              (product) => {
-                const isLiked =
-                  liked.includes(product.id);
+            {filteredProducts.map((product) => {
+              const isLiked = liked.includes(product.id);
+              const isLiking = liking.includes(product.id);
+              const isSaved = saved.includes(product.id);
+              const inCart = cart.includes(product.id);
 
-                const isSaved =
-                  saved.includes(product.id);
+              const image =
+                product.images?.[0] ||
+                "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
 
-                const inCart =
-                  cart.includes(product.id);
+              return (
+                <article
+                  key={product.id}
+                  onClick={() =>
+                    openProduct(product)
+                  }
+                  className={`group cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition hover:-translate-y-1 hover:bg-white/[0.07] ${
+                    product.isSold
+                      ? "opacity-75"
+                      : ""
+                  }`}
+                >
+                  <div className="relative aspect-square overflow-hidden">
+                    <img
+                      src={image}
+                      alt={product.title}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
 
-                const image =
-                  product.images?.[0] ||
-                  "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
-
-                return (
-                  <article
-                    key={product.id}
-                    onClick={() =>
-                      openProduct(product)
-                    }
-                    className={`group cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition hover:-translate-y-1 hover:bg-white/[0.07] ${
-                      product.isSold
-                        ? "opacity-75"
-                        : ""
-                    }`}
-                  >
-                    <div className="relative aspect-square overflow-hidden">
-                      <img
-                        src={image}
-                        alt={product.title}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-
-                      <div className="absolute left-2 top-2 rounded-xl bg-black/60 px-2 py-1 text-[10px] backdrop-blur">
-                        {product.game}
-                      </div>
-
-                      {product.isSold && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[2px]">
-                          <span className="rounded-2xl border border-red-400/30 bg-red-500/20 px-5 py-2 text-sm font-black text-red-300">
-                            فروخته شد
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="absolute right-2 top-2 flex flex-col gap-2">
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleLike(
-                              product.id
-                            );
-                          }}
-                          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/60 text-lg backdrop-blur transition hover:scale-110 active:scale-95"
-                          aria-label="پسندیدن"
-                        >
-                          {isLiked
-                            ? "❤️"
-                            : "♡"}
-                        </button>
-
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleSave(
-                              product.id
-                            );
-                          }}
-                          className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur transition duration-200 hover:scale-110 active:scale-95 ${
-                            isSaved
-                              ? "border-white/30 bg-white text-slate-950"
-                              : "border-white/10 bg-black/60 text-white"
-                          }`}
-                          aria-label={
-                            isSaved
-                              ? "حذف از ذخیره‌ها"
-                              : "ذخیره اکانت"
-                          }
-                        >
-                          <BookmarkIcon
-                            saved={isSaved}
-                          />
-                        </button>
-                      </div>
+                    <div className="absolute left-2 top-2 rounded-xl bg-black/60 px-2 py-1 text-[10px] backdrop-blur">
+                      {product.game}
                     </div>
 
-                    <div className="p-3">
-                      <h4 className="line-clamp-2 min-h-10 text-sm font-bold leading-5">
-                        {product.title}
-                      </h4>
-
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-                        <span>
-                          ❤️{" "}
-                          {product.likes +
-                            (isLiked
-                              ? 1
-                              : 0)}
-                        </span>
-
-                        <span>
-                          🔐 اطلاعات مخفی
+                    {product.isSold && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[2px]">
+                        <span className="rounded-2xl border border-red-400/30 bg-red-500/20 px-5 py-2 text-sm font-black text-red-300">
+                          فروخته شد
                         </span>
                       </div>
+                    )}
 
-                      <div className="mt-3">
-                        <p className="text-base font-black">
-                          {formatPrice(
-                            product.price
-                          )}
-
-                          <span className="mr-1 text-[10px] font-normal text-slate-400">
-                            تومان
-                          </span>
-                        </p>
-                      </div>
+                    <div className="absolute right-2 top-2 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        disabled={isLiking}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void toggleLike(product.id);
+                        }}
+                        className={`flex h-10 w-10 items-center justify-center rounded-full border backdrop-blur transition duration-200 hover:scale-110 active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
+                          isLiked
+                            ? "border-red-400/50 bg-red-500/30 text-red-500 shadow-lg shadow-red-500/30"
+                            : "border-white/10 bg-black/60 text-white"
+                        }`}
+                        aria-label={
+                          isLiked
+                            ? "حذف لایک"
+                            : "پسندیدن"
+                        }
+                        aria-pressed={isLiked}
+                      >
+                        <HeartIcon liked={isLiked} />
+                      </button>
 
                       <button
-                        disabled={
-                          product.isSold
-                        }
+                        type="button"
                         onClick={(event) => {
+                          event.preventDefault();
                           event.stopPropagation();
-
-                          addToCart(
-                            product.id
-                          );
+                          toggleSave(product.id);
                         }}
-                        className={`mt-3 w-full rounded-xl py-2.5 text-xs font-bold transition ${
-                          product.isSold
-                            ? "cursor-not-allowed bg-white/5 text-slate-600"
-                            : inCart
-                            ? "bg-emerald-500/20 text-emerald-300"
-                            : "bg-white text-slate-950 hover:bg-slate-200"
+                        className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur transition duration-200 hover:scale-110 active:scale-95 ${
+                          isSaved
+                            ? "border-white/30 bg-white text-slate-950"
+                            : "border-white/10 bg-black/60 text-white"
                         }`}
+                        aria-label={
+                          isSaved
+                            ? "حذف از ذخیره‌ها"
+                            : "ذخیره اکانت"
+                        }
                       >
-                        {product.isSold
-                          ? "فروخته شد"
-                          : inCart
-                          ? "✓ داخل سبد خرید"
-                          : "افزودن به سبد خرید"}
+                        <BookmarkIcon saved={isSaved} />
                       </button>
                     </div>
-                  </article>
-                );
-              }
-            )}
+                  </div>
+
+                  <div className="p-3">
+                    <h4 className="line-clamp-2 min-h-10 text-sm font-bold leading-5">
+                      {product.title}
+                    </h4>
+
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>
+                        ❤️ {product.likes}
+                      </span>
+
+                      <span>
+                        🔐 اطلاعات مخفی
+                      </span>
+                    </div>
+
+                    <div className="mt-3">
+                      <p className="text-base font-black">
+                        {formatPrice(product.price)}
+
+                        <span className="mr-1 text-[10px] font-normal text-slate-400">
+                          تومان
+                        </span>
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={product.isSold}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        addToCart(product.id);
+                      }}
+                      className={`mt-3 w-full rounded-xl py-2.5 text-xs font-bold transition ${
+                        product.isSold
+                          ? "cursor-not-allowed bg-white/5 text-slate-600"
+                          : inCart
+                          ? "bg-emerald-500/20 text-emerald-300"
+                          : "bg-white text-slate-950 hover:bg-slate-200"
+                      }`}
+                    >
+                      {product.isSold
+                        ? "فروخته شد"
+                        : inCart
+                        ? "✓ داخل سبد خرید"
+                        : "افزودن به سبد خرید"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
@@ -1037,19 +1184,23 @@ export default function Home() {
               className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl"
             >
               <button
+                type="button"
                 onClick={closeProduct}
                 className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-lg backdrop-blur"
               >
                 ✕
               </button>
 
-              <div className="relative aspect-square w-full bg-black sm:aspect-video">
+              <div
+                className="relative aspect-square w-full bg-black sm:aspect-video"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                style={{ touchAction: "pan-y" }}
+              >
                 {selectedProduct.videoUrl &&
                 selectedImage === -1 ? (
                   <video
-                    src={
-                      selectedProduct.videoUrl
-                    }
+                    src={selectedProduct.videoUrl}
                     controls
                     autoPlay
                     className="h-full w-full object-contain"
@@ -1062,9 +1213,7 @@ export default function Home() {
                       ] ||
                       "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1000&q=80"
                     }
-                    alt={
-                      selectedProduct.title
-                    }
+                    alt={selectedProduct.title}
                     className="h-full w-full object-contain"
                   />
                 )}
@@ -1076,27 +1225,30 @@ export default function Home() {
                     </span>
                   </div>
                 )}
+
+                {selectedProduct.images &&
+                  selectedProduct.images.length > 1 &&
+                  selectedImage >= 0 && (
+                    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-[10px] text-white backdrop-blur sm:hidden">
+                      ← عکس قبلی | عکس بعدی →
+                    </div>
+                  )}
               </div>
 
-              {(selectedProduct.images &&
-                selectedProduct.images.length >
-                  1) ||
-              selectedProduct.videoUrl ? (
+              {((selectedProduct.images &&
+                selectedProduct.images.length > 1) ||
+                selectedProduct.videoUrl) && (
                 <div className="flex gap-2 overflow-x-auto border-b border-white/10 bg-black/20 p-3">
                   {selectedProduct.images?.map(
                     (image, index) => (
                       <button
-                        key={
-                          image + index
-                        }
+                        type="button"
+                        key={image + index}
                         onClick={() =>
-                          setSelectedImage(
-                            index
-                          )
+                          setSelectedImage(index)
                         }
                         className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 ${
-                          selectedImage ===
-                          index
+                          selectedImage === index
                             ? "border-white"
                             : "border-white/10"
                         }`}
@@ -1112,14 +1264,12 @@ export default function Home() {
 
                   {selectedProduct.videoUrl && (
                     <button
+                      type="button"
                       onClick={() =>
-                        setSelectedImage(
-                          -1
-                        )
+                        setSelectedImage(-1)
                       }
                       className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 bg-white/5 text-2xl ${
-                        selectedImage ===
-                        -1
+                        selectedImage === -1
                           ? "border-white"
                           : "border-white/10"
                       }`}
@@ -1128,47 +1278,69 @@ export default function Home() {
                     </button>
                   )}
                 </div>
-              ) : null}
+              )}
 
               <div className="p-5 sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <span className="inline-block rounded-xl bg-indigo-500/15 px-3 py-1 text-xs text-indigo-300">
-                      {
-                        selectedProduct.game
-                      }
+                      {selectedProduct.game}
                     </span>
 
                     <h2 className="mt-3 text-xl font-black leading-8 sm:text-2xl">
-                      {
-                        selectedProduct.title
-                      }
+                      {selectedProduct.title}
                     </h2>
                   </div>
 
                   <div className="flex shrink-0 gap-2">
                     <button
-                      onClick={() =>
-                        toggleLike(
+                      type="button"
+                      disabled={liking.includes(
+                        selectedProduct.id
+                      )}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        void toggleLike(
+                          selectedProduct.id
+                        );
+                      }}
+                      className={`flex h-11 w-11 items-center justify-center rounded-full border transition duration-200 hover:scale-105 active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
+                        liked.includes(
                           selectedProduct.id
                         )
+                          ? "border-red-400/50 bg-red-500/30 text-red-500 shadow-lg shadow-red-500/30"
+                          : "border-white/10 bg-white/5 text-white"
+                      }`}
+                      aria-label={
+                        liked.includes(
+                          selectedProduct.id
+                        )
+                          ? "حذف لایک"
+                          : "پسندیدن"
                       }
-                      className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xl transition hover:scale-105 active:scale-95"
-                      aria-label="پسندیدن"
-                    >
-                      {liked.includes(
+                      aria-pressed={liked.includes(
                         selectedProduct.id
-                      )
-                        ? "❤️"
-                        : "♡"}
+                      )}
+                    >
+                      <HeartIcon
+                        liked={liked.includes(
+                          selectedProduct.id
+                        )}
+                      />
                     </button>
 
                     <button
-                      onClick={() =>
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
                         toggleSave(
                           selectedProduct.id
-                        )
-                      }
+                        );
+                      }}
                       className={`flex h-11 w-11 items-center justify-center rounded-full border transition duration-200 hover:scale-105 active:scale-95 ${
                         saved.includes(
                           selectedProduct.id
@@ -1194,14 +1366,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-3 text-xs text-slate-500">
-                  ❤️{" "}
-                  {selectedProduct.likes +
-                    (liked.includes(
-                      selectedProduct.id
-                    )
-                      ? 1
-                      : 0)}{" "}
-                  پسند
+                  ❤️ {selectedProduct.likes} پسند
                 </div>
 
                 {selectedProduct.description && (
@@ -1211,17 +1376,13 @@ export default function Home() {
                     </h3>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-slate-300">
-                      {
-                        selectedProduct.description
-                      }
+                      {selectedProduct.description}
                     </div>
                   </div>
                 )}
 
                 <div className="mt-5 flex items-center gap-3 rounded-2xl border border-emerald-400/10 bg-emerald-500/5 p-4">
-                  <span className="text-xl">
-                    🔐
-                  </span>
+                  <span className="text-xl">🔐</span>
 
                   <div>
                     <p className="text-sm font-bold">
@@ -1251,6 +1412,7 @@ export default function Home() {
                   </div>
 
                   <button
+                    type="button"
                     disabled={
                       selectedProduct.isSold
                     }
@@ -1289,6 +1451,7 @@ export default function Home() {
           <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4">
               <button
+                type="button"
                 onClick={closeCart}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg hover:bg-white/10"
               >
@@ -1312,9 +1475,7 @@ export default function Home() {
           <div className="mx-auto max-w-3xl px-4 py-6">
             {cartProducts.length === 0 ? (
               <div className="flex min-h-[65vh] flex-col items-center justify-center text-center">
-                <div className="text-6xl">
-                  🛒
-                </div>
+                <div className="text-6xl">🛒</div>
 
                 <h2 className="mt-5 text-xl font-black">
                   سبد خرید خالی است
@@ -1325,6 +1486,7 @@ export default function Home() {
                 </p>
 
                 <button
+                  type="button"
                   onClick={closeCart}
                   className="mt-6 rounded-2xl bg-white px-6 py-3 text-sm font-bold text-slate-950"
                 >
@@ -1334,84 +1496,74 @@ export default function Home() {
             ) : (
               <>
                 <div className="space-y-3">
-                  {cartProducts.map(
-                    (product) => {
-                      const image =
-                        product.images?.[0] ||
-                        "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=500&q=80";
+                  {cartProducts.map((product) => {
+                    const image =
+                      product.images?.[0] ||
+                      "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=500&q=80";
 
-                      return (
-                        <div
-                          key={
-                            product.id
+                    return (
+                      <div
+                        key={product.id}
+                        className="flex gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-3 sm:p-4"
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openProduct(product)
                           }
-                          className="flex gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-3 sm:p-4"
+                          className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl sm:h-28 sm:w-28"
                         >
-                          <button
-                            onClick={() =>
-                              openProduct(
-                                product
-                              )
-                            }
-                            className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl sm:h-28 sm:w-28"
-                          >
-                            <img
-                              src={image}
-                              alt={
-                                product.title
-                              }
-                              className="h-full w-full object-cover"
-                            />
-                          </button>
+                          <img
+                            src={image}
+                            alt={product.title}
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <p className="text-[10px] text-indigo-300">
-                                  {
-                                    product.game
-                                  }
-                                </p>
-
-                                <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-6">
-                                  {
-                                    product.title
-                                  }
-                                </h3>
-                              </div>
-
-                              <button
-                                onClick={() =>
-                                  removeFromCart(
-                                    product.id
-                                  )
-                                }
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-sm text-red-400 hover:bg-red-500/20"
-                                aria-label="حذف اکانت"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-
-                            <div className="mt-4 flex items-end justify-between gap-2">
-                              <span className="text-xs text-slate-500">
-                                اکانت
-                              </span>
-
-                              <p className="text-base font-black">
-                                {formatPrice(
-                                  product.price
-                                )}{" "}
-                                <span className="text-[9px] font-normal text-slate-500">
-                                  تومان
-                                </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-[10px] text-indigo-300">
+                                {product.game}
                               </p>
+
+                              <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-6">
+                                {product.title}
+                              </h3>
                             </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeFromCart(
+                                  product.id
+                                )
+                              }
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-sm text-red-400 hover:bg-red-500/20"
+                              aria-label="حذف اکانت"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+
+                          <div className="mt-4 flex items-end justify-between gap-2">
+                            <span className="text-xs text-slate-500">
+                              اکانت
+                            </span>
+
+                            <p className="text-base font-black">
+                              {formatPrice(
+                                product.price
+                              )}{" "}
+                              <span className="text-[9px] font-normal text-slate-500">
+                                تومان
+                              </span>
+                            </p>
                           </div>
                         </div>
-                      );
-                    }
-                  )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -1431,9 +1583,7 @@ export default function Home() {
                     </span>
 
                     <span className="text-xl font-black">
-                      {formatPrice(
-                        cartTotal
-                      )}{" "}
+                      {formatPrice(cartTotal)}{" "}
                       <span className="text-xs font-normal text-slate-400">
                         تومان
                       </span>
@@ -1441,6 +1591,7 @@ export default function Home() {
                   </div>
 
                   <button
+                    type="button"
                     onClick={openCheckout}
                     className="mt-5 w-full rounded-2xl bg-white py-4 text-sm font-black text-slate-950 transition hover:bg-slate-200"
                   >
@@ -1458,6 +1609,7 @@ export default function Home() {
           <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-md items-center justify-between px-4">
               <button
+                type="button"
                 onClick={closeCheckout}
                 disabled={checkoutLoading}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg"
@@ -1475,9 +1627,7 @@ export default function Home() {
 
           <div className="mx-auto max-w-md px-4 py-8">
             <div className="text-center">
-              <div className="text-5xl">
-                📦
-              </div>
+              <div className="text-5xl">📦</div>
 
               <h2 className="mt-4 text-xl font-black">
                 ثبت نهایی سفارش
@@ -1496,9 +1646,7 @@ export default function Home() {
               type="text"
               value={fullName}
               onChange={(event) =>
-                setFullName(
-                  event.target.value
-                )
+                setFullName(event.target.value)
               }
               placeholder="مثلاً محمد سراغی"
               className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-white outline-none placeholder:text-slate-600 focus:border-indigo-400"
@@ -1545,10 +1693,7 @@ export default function Home() {
                 </span>
 
                 <span className="font-black">
-                  {formatPrice(
-                    cartTotal
-                  )}{" "}
-                  تومان
+                  {formatPrice(cartTotal)} تومان
                 </span>
               </div>
             </div>
@@ -1558,6 +1703,7 @@ export default function Home() {
             </div>
 
             <button
+              type="button"
               disabled={checkoutLoading}
               onClick={completePurchase}
               className="mt-5 w-full rounded-2xl bg-white py-4 text-sm font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1600,95 +1746,88 @@ export default function Home() {
             </div>
 
             <div className="mt-8 space-y-4">
-              {purchasedAccounts.map(
-                (account) => {
-                  const passwordVisible =
-                    visiblePasswords.includes(
-                      account.purchaseId
-                    );
+              {purchasedAccounts.map((account) => {
+                const passwordVisible =
+                  visiblePasswords.includes(
+                    account.purchaseId
+                  );
 
-                  return (
-                    <div
-                      key={
-                        account.purchaseId
-                      }
-                      className="rounded-3xl border border-white/10 bg-white/[0.04] p-5"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <span className="rounded-xl bg-indigo-500/15 px-3 py-1 text-xs text-indigo-300">
-                            {account.game}
-                          </span>
-
-                          <h3 className="mt-3 text-base font-black">
-                            {
-                              account.productTitle
-                            }
-                          </h3>
-                        </div>
-
-                        <span className="rounded-xl bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-                          تحویل شد
+                return (
+                  <div
+                    key={account.purchaseId}
+                    className="rounded-3xl border border-white/10 bg-white/[0.04] p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="rounded-xl bg-indigo-500/15 px-3 py-1 text-xs text-indigo-300">
+                          {account.game}
                         </span>
+
+                        <h3 className="mt-3 text-base font-black">
+                          {account.productTitle}
+                        </h3>
                       </div>
 
-                      <div className="mt-5 space-y-3">
-                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <span className="rounded-xl bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
+                        تحویل شد
+                      </span>
+                    </div>
+
+                    <div className="mt-5 space-y-3">
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <p className="text-xs text-slate-500">
+                          ایمیل / نام کاربری
+                        </p>
+
+                        <p
+                          dir="ltr"
+                          className="mt-2 break-all text-sm font-bold text-white"
+                        >
+                          {account.accountUsername}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <div className="flex items-center justify-between gap-3">
                           <p className="text-xs text-slate-500">
-                            ایمیل / نام کاربری
+                            رمز عبور
                           </p>
 
-                          <p
-                            dir="ltr"
-                            className="mt-2 break-all text-sm font-bold text-white"
-                          >
-                            {
-                              account.accountUsername
+                          <button
+                            type="button"
+                            onClick={() =>
+                              togglePassword(
+                                account.purchaseId
+                              )
                             }
-                          </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-500">
-                              رمز عبور
-                            </p>
-
-                            <button
-                              onClick={() =>
-                                togglePassword(
-                                  account.purchaseId
-                                )
-                              }
-                              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
-                              aria-label={
-                                passwordVisible
-                                  ? "مخفی کردن رمز"
-                                  : "نمایش رمز"
-                              }
-                            >
-                              <EyeIcon
-                                open={
-                                  passwordVisible
-                                }
-                              />
-                            </button>
-                          </div>
-
-                          <p
-                            dir="ltr"
-                            className="mt-2 break-all text-sm font-bold text-white"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
+                            aria-label={
+                              passwordVisible
+                                ? "مخفی کردن رمز"
+                                : "نمایش رمز"
+                            }
                           >
-                            {passwordVisible
-                              ? account.accountPassword
-                              : "••••••••••••"}
-                          </p>
+                            <EyeIcon
+                              open={
+                                passwordVisible
+                              }
+                            />
+                          </button>
                         </div>
+
+                        <p
+                          dir="ltr"
+                          className="mt-2 break-all text-sm font-bold text-white"
+                        >
+                          {passwordVisible
+                            ? account.accountPassword
+                            : "••••••••••••"}
+                        </p>
                       </div>
                     </div>
-                  );
-                }
-              )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="mt-6 rounded-2xl border border-amber-400/10 bg-amber-500/5 p-4 text-xs leading-6 text-slate-400">
@@ -1696,6 +1835,7 @@ export default function Home() {
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 setPurchaseComplete(false);
                 setPurchasedAccounts([]);
