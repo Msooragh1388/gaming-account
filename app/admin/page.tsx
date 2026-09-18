@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -50,35 +49,108 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [games, setGames] = useState<Game[]>([]);
 
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [loadingGames, setLoadingGames] = useState(true);
-  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [loadingProducts, setLoadingProducts] =
+    useState(true);
+  const [loadingGames, setLoadingGames] =
+    useState(true);
+  const [loadingEdit, setLoadingEdit] =
+    useState(false);
 
   const [message, setMessage] = useState("");
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showGameModal, setShowGameModal] = useState(false);
+  const [showAddModal, setShowAddModal] =
+    useState(false);
+  const [showGameModal, setShowGameModal] =
+    useState(false);
 
   const [editingProduct, setEditingProduct] =
     useState<Product | null>(null);
 
   const [game, setGame] = useState("");
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] =
+    useState("");
   const [price, setPrice] = useState("");
-  const [accountUsername, setAccountUsername] = useState("");
-  const [accountPassword, setAccountPassword] = useState("");
+  const [accountUsername, setAccountUsername] =
+    useState("");
+  const [accountPassword, setAccountPassword] =
+    useState("");
 
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [selectedImages, setSelectedImages] =
+    useState<File[]>([]);
 
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [uploadedVideo, setUploadedVideo] = useState("");
+  const [selectedVideo, setSelectedVideo] =
+    useState<File | null>(null);
+
+  const [uploadedImages, setUploadedImages] =
+    useState<string[]>([]);
+
+  const [uploadedVideo, setUploadedVideo] =
+    useState("");
+
+  // =========================================
+  // IMAGE STATES
+  // =========================================
+
+  // شماره عکس اصلی در لیست ترکیبی
+  // عکس‌های آپلودشده + عکس‌های جدید
+  const [mainImageIndex, setMainImageIndex] =
+    useState(0);
+
+  const [selectedImagePreviews, setSelectedImagePreviews] =
+    useState<string[]>([]);
+
+  // =========================================
+  // VIDEO PREVIEW
+  // =========================================
+
+  const [selectedVideoPreview, setSelectedVideoPreview] =
+    useState("");
 
   const [saving, setSaving] = useState(false);
 
-  const [newGameName, setNewGameName] = useState("");
-  const [addingGame, setAddingGame] = useState(false);
+  const [newGameName, setNewGameName] =
+    useState("");
+  const [addingGame, setAddingGame] =
+    useState(false);
+
+  // =========================================
+  // CREATE PREVIEWS FOR NEW IMAGES
+  // =========================================
+
+  useEffect(() => {
+    const urls = selectedImages.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    setSelectedImagePreviews(urls);
+
+    return () => {
+      urls.forEach((url) =>
+        URL.revokeObjectURL(url)
+      );
+    };
+  }, [selectedImages]);
+
+  // =========================================
+  // CREATE PREVIEW FOR NEW VIDEO
+  // =========================================
+
+  useEffect(() => {
+    if (!selectedVideo) {
+      setSelectedVideoPreview("");
+      return;
+    }
+
+    const url =
+      URL.createObjectURL(selectedVideo);
+
+    setSelectedVideoPreview(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [selectedVideo]);
 
   // =========================================
   // LOAD GAMES
@@ -195,7 +267,10 @@ export default function AdminPage() {
     }
 
     if (data) {
-      setGames((current) => [...current, data]);
+      setGames((current) => [
+        ...current,
+        data,
+      ]);
     }
 
     setNewGameName("");
@@ -258,7 +333,8 @@ export default function AdminPage() {
 
   async function deleteGame(gameItem: Game) {
     const usedByProduct = products.some(
-      (product) => product.game === gameItem.name
+      (product) =>
+        product.game === gameItem.name
     );
 
     if (usedByProduct) {
@@ -315,7 +391,8 @@ export default function AdminPage() {
 
   function resetForm() {
     setGame(
-      games.find((item) => item.active)?.name || ""
+      games.find((item) => item.active)?.name ||
+        ""
     );
 
     setTitle("");
@@ -329,6 +406,10 @@ export default function AdminPage() {
 
     setUploadedImages([]);
     setUploadedVideo("");
+
+    setMainImageIndex(0);
+
+    setSelectedVideoPreview("");
 
     setEditingProduct(null);
   }
@@ -388,14 +469,13 @@ export default function AdminPage() {
 
     setGame(fullProduct.game);
     setTitle(fullProduct.title);
+
     setDescription(
       fullProduct.description || ""
     );
+
     setPrice(String(fullProduct.price));
 
-    // مهم:
-    // حالا جیمیل و رمز واقعی اکانت
-    // داخل فیلدها قرار می‌گیرند.
     setAccountUsername(
       fullProduct.accountUsername || ""
     );
@@ -414,6 +494,9 @@ export default function AdminPage() {
     setUploadedVideo(
       fullProduct.videoUrl || ""
     );
+
+    setMainImageIndex(0);
+    setSelectedVideoPreview("");
 
     setShowAddModal(true);
     setLoadingEdit(false);
@@ -443,7 +526,104 @@ export default function AdminPage() {
       event.target.files || []
     );
 
-    setSelectedImages(files);
+    if (files.length === 0) {
+      return;
+    }
+
+    setSelectedImages((current) => [
+      ...current,
+      ...files,
+    ]);
+
+    if (
+      uploadedImages.length === 0 &&
+      selectedImages.length === 0
+    ) {
+      setMainImageIndex(0);
+    }
+
+    event.target.value = "";
+  }
+
+  // =========================================
+  // DELETE UPLOADED IMAGE
+  // =========================================
+
+  async function deleteUploadedImage(
+    index: number
+  ) {
+    const image = uploadedImages[index];
+
+    if (!image) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "آیا می‌خواهی این عکس حذف شود؟"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await removeStorageFile(image);
+
+    setUploadedImages((current) =>
+      current.filter(
+        (_, imageIndex) =>
+          imageIndex !== index
+      )
+    );
+
+    setMainImageIndex((current) => {
+      if (index < current) {
+        return current - 1;
+      }
+
+      if (index === current) {
+        return 0;
+      }
+
+      return current;
+    });
+  }
+
+  // =========================================
+  // DELETE SELECTED NEW IMAGE
+  // =========================================
+
+  function deleteSelectedImage(
+    index: number
+  ) {
+    const combinedIndex =
+      uploadedImages.length + index;
+
+    setSelectedImages((current) =>
+      current.filter(
+        (_, imageIndex) =>
+          imageIndex !== index
+      )
+    );
+
+    setMainImageIndex((current) => {
+      if (combinedIndex < current) {
+        return current - 1;
+      }
+
+      if (combinedIndex === current) {
+        return 0;
+      }
+
+      return current;
+    });
+  }
+
+  // =========================================
+  // SET MAIN IMAGE
+  // =========================================
+
+  function setMainImage(index: number) {
+    setMainImageIndex(index);
   }
 
   // =========================================
@@ -457,6 +637,39 @@ export default function AdminPage() {
       event.target.files?.[0] || null;
 
     setSelectedVideo(file);
+
+    event.target.value = "";
+  }
+
+  // =========================================
+  // DELETE CURRENT VIDEO
+  // =========================================
+
+  function deleteUploadedVideo() {
+    if (!uploadedVideo) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "آیا می‌خواهی ویدیوی فعلی حذف شود؟"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    // فعلاً فقط از فرم حذف می‌کنیم.
+    // بعد از ذخیره، فایل از Storage هم حذف می‌شود.
+    setUploadedVideo("");
+  }
+
+  // =========================================
+  // DELETE NEW VIDEO
+  // =========================================
+
+  function deleteSelectedVideo() {
+    setSelectedVideo(null);
+    setSelectedVideoPreview("");
   }
 
   // =========================================
@@ -529,7 +742,8 @@ export default function AdminPage() {
     publicUrl: string
   ) {
     try {
-      const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+      const marker =
+        `/storage/v1/object/public/${STORAGE_BUCKET}/`;
 
       const index = publicUrl.indexOf(marker);
 
@@ -611,7 +825,10 @@ export default function AdminPage() {
         let finalVideo =
           uploadedVideo || null;
 
-        // Upload new images
+        // ===================================
+        // UPLOAD NEW IMAGES
+        // ===================================
+
         if (selectedImages.length > 0) {
           const newImages: string[] = [];
 
@@ -626,11 +843,40 @@ export default function AdminPage() {
           ];
         }
 
-        // Upload new video
+        // ===================================
+        // UPLOAD NEW VIDEO
+        // ===================================
+
         if (selectedVideo) {
           finalVideo =
             await uploadVideo(selectedVideo);
         }
+
+        // ===================================
+        // MOVE MAIN IMAGE TO FIRST POSITION
+        // ===================================
+
+        if (finalImages.length > 0) {
+          const safeMainIndex = Math.min(
+            Math.max(mainImageIndex, 0),
+            finalImages.length - 1
+          );
+
+          const mainImage =
+            finalImages[safeMainIndex];
+
+          finalImages = [
+            mainImage,
+            ...finalImages.filter(
+              (_, index) =>
+                index !== safeMainIndex
+            ),
+          ];
+        }
+
+        // ===================================
+        // UPDATE DATABASE
+        // ===================================
 
         const { data, error } =
           await supabase.rpc(
@@ -645,8 +891,6 @@ export default function AdminPage() {
                   : null,
               p_price: numericPrice,
 
-              // حالا مقدار کامل فعلی
-              // همیشه ارسال می‌شود.
               p_account_username:
                 accountUsername.trim(),
 
@@ -683,7 +927,10 @@ export default function AdminPage() {
           return;
         }
 
-        // Remove old images that were removed
+        // ===================================
+        // REMOVE OLD REMOVED IMAGES
+        // ===================================
+
         const oldImages =
           editingProduct.images || [];
 
@@ -697,7 +944,10 @@ export default function AdminPage() {
           await removeStorageFile(url);
         }
 
-        // Remove old video if replaced
+        // ===================================
+        // REMOVE OLD VIDEO IF REPLACED/REMOVED
+        // ===================================
+
         if (
           editingProduct.videoUrl &&
           editingProduct.videoUrl !== finalVideo
@@ -726,10 +976,41 @@ export default function AdminPage() {
 
       const finalImages: string[] = [];
 
+      // ===================================
+      // UPLOAD IMAGES
+      // ===================================
+
       for (const file of selectedImages) {
         const url = await uploadImage(file);
         finalImages.push(url);
       }
+
+      // ===================================
+      // MOVE MAIN IMAGE TO FIRST POSITION
+      // ===================================
+
+      if (finalImages.length > 0) {
+        const safeMainIndex = Math.min(
+          Math.max(mainImageIndex, 0),
+          finalImages.length - 1
+        );
+
+        if (safeMainIndex !== 0) {
+          const mainImage =
+            finalImages[safeMainIndex];
+
+          finalImages.splice(
+            safeMainIndex,
+            1
+          );
+
+          finalImages.unshift(mainImage);
+        }
+      }
+
+      // ===================================
+      // UPLOAD VIDEO
+      // ===================================
 
       let finalVideo: string | null = null;
 
@@ -737,6 +1018,10 @@ export default function AdminPage() {
         finalVideo =
           await uploadVideo(selectedVideo);
       }
+
+      // ===================================
+      // INSERT PRODUCT
+      // ===================================
 
       const { error } = await supabase
         .from("Product")
@@ -748,12 +1033,20 @@ export default function AdminPage() {
               ? description.trim()
               : null,
           price: numericPrice,
-          images: finalImages,
+
+          images:
+            finalImages.length > 0
+              ? finalImages
+              : null,
+
           videoUrl: finalVideo,
+
           accountUsername:
             accountUsername.trim(),
+
           accountPassword:
             accountPassword,
+
           isSold: false,
           likes: 0,
         });
@@ -1331,11 +1624,13 @@ export default function AdminPage() {
                 />
               </div>
 
+              {/* ================================= */}
               {/* IMAGES */}
+              {/* ================================= */}
 
               <div>
                 <label className="mb-2 block text-sm font-bold">
-                  تصاویر
+                  تصاویر اکانت
                 </label>
 
                 <input
@@ -1346,30 +1641,170 @@ export default function AdminPage() {
                   className="block w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-300"
                 />
 
-                {uploadedImages.length > 0 && (
-                  <div className="mt-3 grid grid-cols-3 gap-3">
+                {/* IMAGE PREVIEW GRID */}
+
+                {(uploadedImages.length > 0 ||
+                  selectedImages.length > 0) && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+
+                    {/* UPLOADED IMAGES */}
+
                     {uploadedImages.map(
-                      (image, index) => (
-                        <img
-                          key={`${image}-${index}`}
-                          src={image}
-                          alt=""
-                          className="aspect-square w-full rounded-xl object-cover"
-                        />
-                      )
+                      (image, index) => {
+                        const isMain =
+                          mainImageIndex ===
+                          index;
+
+                        return (
+                          <div
+                            key={`${image}-${index}`}
+                            className={`relative overflow-hidden rounded-2xl border-2 ${
+                              isMain
+                                ? "border-yellow-400"
+                                : "border-white/10"
+                            }`}
+                          >
+                            <img
+                              src={image}
+                              alt={`تصویر ${index + 1}`}
+                              className="aspect-square w-full object-cover"
+                            />
+
+                            {/* DELETE */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                deleteUploadedImage(
+                                  index
+                                )
+                              }
+                              className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-black text-white shadow-lg transition hover:bg-red-600"
+                              title="حذف عکس"
+                            >
+                              ×
+                            </button>
+
+                            {/* MAIN */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMainImage(
+                                  index
+                                )
+                              }
+                              className={`absolute bottom-2 left-2 rounded-xl px-3 py-1.5 text-xs font-black shadow-lg ${
+                                isMain
+                                  ? "bg-yellow-400 text-black"
+                                  : "bg-black/70 text-white hover:bg-black/90"
+                              }`}
+                            >
+                              {isMain
+                                ? "⭐ اصلی"
+                                : "☆ اصلی"}
+                            </button>
+                          </div>
+                        );
+                      }
+                    )}
+
+                    {/* NEW SELECTED IMAGES */}
+
+                    {selectedImagePreviews.map(
+                      (preview, index) => {
+                        const combinedIndex =
+                          uploadedImages.length +
+                          index;
+
+                        const isMain =
+                          mainImageIndex ===
+                          combinedIndex;
+
+                        return (
+                          <div
+                            key={`${preview}-${index}`}
+                            className={`relative overflow-hidden rounded-2xl border-2 ${
+                              isMain
+                                ? "border-yellow-400"
+                                : "border-white/10"
+                            }`}
+                          >
+                            <img
+                              src={preview}
+                              alt={`تصویر جدید ${
+                                index + 1
+                              }`}
+                              className="aspect-square w-full object-cover"
+                            />
+
+                            {/* NEW BADGE */}
+
+                            <div className="absolute left-2 top-2 z-10 rounded-lg bg-blue-500 px-2 py-1 text-[10px] font-bold text-white shadow-lg">
+                              جدید
+                            </div>
+
+                            {/* DELETE */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                deleteSelectedImage(
+                                  index
+                                )
+                              }
+                              className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-black text-white shadow-lg transition hover:bg-red-600"
+                              title="حذف عکس"
+                            >
+                              ×
+                            </button>
+
+                            {/* MAIN */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMainImage(
+                                  combinedIndex
+                                )
+                              }
+                              className={`absolute bottom-2 left-2 rounded-xl px-3 py-1.5 text-xs font-black shadow-lg ${
+                                isMain
+                                  ? "bg-yellow-400 text-black"
+                                  : "bg-black/70 text-white hover:bg-black/90"
+                              }`}
+                            >
+                              {isMain
+                                ? "⭐ اصلی"
+                                : "☆ اصلی"}
+                            </button>
+                          </div>
+                        );
+                      }
                     )}
                   </div>
                 )}
 
+                {(uploadedImages.length > 0 ||
+                  selectedImages.length > 0) && (
+                  <p className="mt-3 text-xs text-zinc-500">
+                    روی «☆ اصلی» بزن تا آن عکس
+                    به‌عنوان عکس اصلی انتخاب شود.
+                    عکس اصلی با ⭐ مشخص می‌شود.
+                  </p>
+                )}
+
                 {selectedImages.length > 0 && (
-                  <p className="mt-2 text-xs text-zinc-500">
+                  <p className="mt-2 text-xs text-blue-400">
                     {selectedImages.length} تصویر
                     جدید انتخاب شده
                   </p>
                 )}
               </div>
 
+              {/* ================================= */}
               {/* VIDEO */}
+              {/* ================================= */}
 
               <div>
                 <label className="mb-2 block text-sm font-bold">
@@ -1383,18 +1818,81 @@ export default function AdminPage() {
                   className="block w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-300"
                 />
 
+                {/* CURRENT VIDEO */}
+
                 {uploadedVideo && (
-                  <p className="mt-2 text-xs text-green-400">
-                    ویدیوی فعلی ثبت شده است.
-                  </p>
+                  <div className="relative mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
+                    <video
+                      src={uploadedVideo}
+                      controls
+                      playsInline
+                      className="max-h-80 w-full object-contain"
+                    />
+
+                    <div className="absolute left-3 top-3 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+                      ویدیوی فعلی
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={
+                        deleteUploadedVideo
+                      }
+                      className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-xl font-black text-white shadow-lg transition hover:bg-red-600"
+                      title="حذف ویدیوی فعلی"
+                    >
+                      ×
+                    </button>
+                  </div>
                 )}
 
-                {selectedVideo && (
-                  <p className="mt-2 text-xs text-zinc-500">
-                    ویدیوی جدید:{" "}
-                    {selectedVideo.name}
-                  </p>
-                )}
+                {/* NEW VIDEO */}
+
+                {selectedVideo &&
+                  selectedVideoPreview && (
+                    <div className="relative mt-4 overflow-hidden rounded-2xl border-2 border-blue-500/50 bg-black">
+                      <video
+                        src={selectedVideoPreview}
+                        controls
+                        playsInline
+                        className="max-h-80 w-full object-contain"
+                      />
+
+                      <div className="absolute left-3 top-3 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+                        ویدیوی جدید
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={
+                          deleteSelectedVideo
+                        }
+                        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-xl font-black text-white shadow-lg transition hover:bg-red-600"
+                        title="حذف ویدیوی جدید"
+                      >
+                        ×
+                      </button>
+
+                      <div className="border-t border-white/10 bg-black/50 px-3 py-2 text-xs text-zinc-400">
+                        {selectedVideo.name}
+                      </div>
+                    </div>
+                  )}
+
+                {!uploadedVideo &&
+                  !selectedVideo && (
+                    <p className="mt-3 text-xs text-zinc-500">
+                      هنوز ویدیویی انتخاب نشده است.
+                    </p>
+                  )}
+
+                {uploadedVideo &&
+                  selectedVideo && (
+                    <p className="mt-3 text-xs text-yellow-400">
+                      با ذخیره تغییرات، ویدیوی جدید
+                      جایگزین ویدیوی فعلی می‌شود.
+                    </p>
+                  )}
               </div>
 
               {/* BUTTONS */}
