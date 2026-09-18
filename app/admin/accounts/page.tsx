@@ -1,37 +1,28 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Product = {
   id: number;
-  game: string;
   title: string;
-  description: string | null;
-  price: number;
+  gameId: number | null;
+  price: number | null;
+  sold: boolean;
+  createdAt: string | null;
   images: string[] | null;
   videoUrl: string | null;
-  isSold: boolean;
-  likes: number;
-  createdAt: string;
 };
 
-function formatPrice(price: number) {
-  return new Intl.NumberFormat("fa-IR").format(price);
-}
-
-export default function AdminAccountsPage() {
+function AccountsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const filter =
-    searchParams.get("filter") || "all";
+  const filter = searchParams.get("filter") || "all";
 
-  const [products, setProducts] = useState<Product[]>(
-    []
-  );
-
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -42,9 +33,7 @@ export default function AdminAccountsPage() {
     const { data, error } = await supabase
       .from("ProductPublic")
       .select("*")
-      .order("createdAt", {
-        ascending: false,
-      });
+      .order("id", { ascending: false });
 
     if (error) {
       console.error(error);
@@ -65,87 +54,63 @@ export default function AdminAccountsPage() {
     loadProducts();
   }, []);
 
-  const filteredProducts =
-    filter === "available"
-      ? products.filter((product) => !product.isSold)
-      : filter === "sold"
-      ? products.filter((product) => product.isSold)
-      : products;
+  const filteredProducts = products.filter((product) => {
+    if (filter === "available") {
+      return !product.sold;
+    }
 
-  const pageTitle =
+    if (filter === "sold") {
+      return product.sold;
+    }
+
+    return true;
+  });
+
+  const title =
     filter === "available"
       ? "اکانت‌های موجود"
       : filter === "sold"
-      ? "اکانت‌های فروخته‌شده"
-      : "کل اکانت‌ها";
+        ? "اکانت‌های فروخته‌شده"
+        : "کل اکانت‌ها";
 
-  async function toggleSold(product: Product) {
-    setMessage("");
-
-    const { data, error } =
-      await supabase.rpc(
-        "toggle_product_sold",
-        {
-          p_id: product.id,
-        }
-      );
+  async function toggleSold(
+    product: Product
+  ) {
+    const { error } = await supabase
+      .from("Product")
+      .update({
+        sold: !product.sold,
+      })
+      .eq("id", product.id);
 
     if (error) {
       console.error(error);
 
       setMessage(
-        `خطا در تغییر وضعیت: ${error.message}`
+        `خطا در تغییر وضعیت اکانت: ${error.message}`
       );
 
       return;
     }
 
-    if (data !== true) {
-      setMessage(
-        "وضعیت اکانت تغییر نکرد."
-      );
-
-      return;
-    }
-
-    setProducts((current) =>
-      current.map((item) =>
-        item.id === product.id
-          ? {
-              ...item,
-              isSold: !product.isSold,
-            }
-          : item
-      )
-    );
-
-    setMessage(
-      product.isSold
-        ? "اکانت دوباره فعال شد."
-        : "اکانت به حالت فروخته‌شده رفت."
-    );
+    await loadProducts();
   }
 
   async function deleteProduct(
-    product: Product
+    productId: number
   ) {
     const confirmed = window.confirm(
-      `آیا مطمئنی می‌خواهی اکانت «${product.title}» را حذف کنی؟`
+      "آیا از حذف این اکانت مطمئن هستید؟"
     );
 
     if (!confirmed) {
       return;
     }
 
-    setMessage("");
-
-    const { data, error } =
-      await supabase.rpc(
-        "delete_product_account",
-        {
-          p_id: product.id,
-        }
-      );
+    const { error } = await supabase
+      .from("Product")
+      .delete()
+      .eq("id", productId);
 
     if (error) {
       console.error(error);
@@ -157,23 +122,7 @@ export default function AdminAccountsPage() {
       return;
     }
 
-    if (data !== true) {
-      setMessage(
-        "اکانت حذف نشد؛ رکورد موردنظر پیدا نشد."
-      );
-
-      return;
-    }
-
-    setProducts((current) =>
-      current.filter(
-        (item) => item.id !== product.id
-      )
-    );
-
-    setMessage(
-      "اکانت با موفقیت حذف شد."
-    );
+    await loadProducts();
   }
 
   return (
@@ -182,239 +131,197 @@ export default function AdminAccountsPage() {
       className="min-h-screen bg-[#07070a] text-white"
     >
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-
-        {/* HEADER */}
-
+        {/* Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-black">
-              {pageTitle}
+              {title}
             </h1>
 
             <p className="mt-2 text-sm text-zinc-400">
-              مدیریت اکانت‌های بازی
+              مدیریت و مشاهده اکانت‌ها
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-
-            {/* ADD ACCOUNT */}
-
-            <button
-              type="button"
-              onClick={() =>
-                router.push("/admin?add=true")
-              }
-              className="rounded-2xl bg-white px-5 py-3 font-bold text-black transition hover:bg-zinc-200"
-            >
-              + افزودن اکانت
-            </button>
-
-            {/* BACK */}
-
-            <button
-              type="button"
-              onClick={() =>
-                router.push("/admin")
-              }
-              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-bold transition hover:bg-white/10"
-            >
-              ← پنل مدیریت
-            </button>
-          </div>
+          <button
+            onClick={() => router.push("/admin")}
+            className="rounded-2xl bg-white px-5 py-3 font-bold text-black transition hover:bg-zinc-200"
+          >
+            بازگشت به پنل
+          </button>
         </div>
 
-        {/* FILTER BUTTONS */}
-
-        <div className="mb-8 grid grid-cols-3 gap-3">
+        {/* Filter buttons */}
+        <div className="mb-8 flex flex-wrap gap-3">
           <button
-            type="button"
             onClick={() =>
               router.push(
                 "/admin/accounts?filter=all"
               )
             }
-            className={`rounded-2xl border border-white/10 p-4 text-sm font-bold transition ${
+            className={`rounded-2xl px-5 py-3 font-bold transition ${
               filter === "all"
                 ? "bg-white text-black"
-                : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                : "border border-white/10 bg-white/5 text-white hover:bg-white/10"
             }`}
           >
-            همه اکانت‌ها
+            همه
           </button>
 
           <button
-            type="button"
             onClick={() =>
               router.push(
                 "/admin/accounts?filter=available"
               )
             }
-            className={`rounded-2xl border border-white/10 p-4 text-sm font-bold transition ${
+            className={`rounded-2xl px-5 py-3 font-bold transition ${
               filter === "available"
                 ? "bg-white text-black"
-                : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                : "border border-white/10 bg-white/5 text-white hover:bg-white/10"
             }`}
           >
             موجود
           </button>
 
           <button
-            type="button"
             onClick={() =>
               router.push(
                 "/admin/accounts?filter=sold"
               )
             }
-            className={`rounded-2xl border border-white/10 p-4 text-sm font-bold transition ${
+            className={`rounded-2xl px-5 py-3 font-bold transition ${
               filter === "sold"
                 ? "bg-white text-black"
-                : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                : "border border-white/10 bg-white/5 text-white hover:bg-white/10"
             }`}
           >
             فروخته‌شده
           </button>
         </div>
 
-        {/* MESSAGE */}
-
+        {/* Message */}
         {message && (
-          <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm">
+          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
             {message}
           </div>
         )}
 
-        {/* ACCOUNT LIST */}
-
-        <section>
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-black">
-              {pageTitle}
-            </h2>
-
-            <button
-              type="button"
-              onClick={loadProducts}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/5"
-            >
-              ↻ بروزرسانی
-            </button>
+        {/* Loading */}
+        {loading ? (
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-zinc-400">
+            در حال دریافت اکانت‌ها...
           </div>
-
-          {loading ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-zinc-400">
-              در حال دریافت اکانت‌ها...
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-zinc-400">
-              در این بخش اکانتی وجود ندارد.
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {filteredProducts.map(
-                (product) => (
-                  <div
-                    key={product.id}
-                    className="rounded-3xl border border-white/10 bg-white/5 p-5"
-                  >
-                    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-
-                      {/* PRODUCT INFO */}
-
-                      <div className="flex min-w-0 gap-4">
-                        {product.images?.[0] ? (
-                          <img
-                            src={product.images[0]}
-                            alt={product.title}
-                            className="h-24 w-24 rounded-2xl object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-white/5 text-3xl">
-                            🎮
-                          </div>
-                        )}
-
-                        <div className="min-w-0">
-                          <div className="mb-2 flex flex-wrap gap-2">
-                            <span className="rounded-lg bg-white/10 px-2 py-1 text-xs text-zinc-300">
-                              {product.game}
-                            </span>
-
-                            {product.isSold ? (
-                              <span className="rounded-lg bg-red-500/10 px-2 py-1 text-xs text-red-400">
-                                فروخته شد
-                              </span>
-                            ) : (
-                              <span className="rounded-lg bg-green-500/10 px-2 py-1 text-xs text-green-400">
-                                موجود
-                              </span>
-                            )}
-                          </div>
-
-                          <h3 className="truncate text-lg font-bold">
-                            {product.title}
-                          </h3>
-
-                          <p className="mt-2 text-sm text-zinc-400">
-                            {formatPrice(
-                              product.price
-                            )}{" "}
-                            تومان
-                          </p>
-
-                          <p className="mt-1 text-xs text-zinc-500">
-                            ❤️ {product.likes}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* ACTIONS */}
-
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            router.push(
-                              `/admin?edit=${product.id}`
-                            )
-                          }
-                          className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold hover:bg-white/10"
-                        >
-                          ویرایش
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleSold(product)
-                          }
-                          className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold hover:bg-white/10"
-                        >
-                          {product.isSold
-                            ? "فعال کردن"
-                            : "فروخته شد"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            deleteProduct(
-                              product
-                            )
-                          }
-                          className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm font-bold text-red-400 hover:bg-red-500/10"
-                        >
-                          حذف
-                        </button>
-                      </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-zinc-400">
+            اکانتی در این بخش وجود ندارد.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProducts.map((product) => (
+              <div
+                key={product.id}
+                className="overflow-hidden rounded-3xl border border-white/10 bg-white/5"
+              >
+                {/* Image */}
+                <div className="aspect-video bg-black">
+                  {product.images &&
+                  product.images.length > 0 ? (
+                    <img
+                      src={product.images[0]}
+                      alt={product.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-zinc-500">
+                      بدون تصویر
                     </div>
+                  )}
+                </div>
+
+                <div className="p-5">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <h2 className="text-xl font-black">
+                      {product.title}
+                    </h2>
+
+                    <span
+                      className={`rounded-xl px-3 py-1 text-xs font-bold ${
+                        product.sold
+                          ? "bg-red-500/10 text-red-300"
+                          : "bg-green-500/10 text-green-300"
+                      }`}
+                    >
+                      {product.sold
+                        ? "فروخته شده"
+                        : "موجود"}
+                    </span>
                   </div>
-                )
-              )}
-            </div>
-          )}
-        </section>
+
+                  <div className="mb-5 text-lg font-bold">
+                    {product.price !== null
+                      ? `${new Intl.NumberFormat(
+                          "fa-IR"
+                        ).format(product.price)} تومان`
+                      : "قیمت نامشخص"}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/admin?edit=${product.id}`
+                        )
+                      }
+                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-bold transition hover:bg-white/10"
+                    >
+                      ویرایش
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        toggleSold(product)
+                      }
+                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-bold transition hover:bg-white/10"
+                    >
+                      {product.sold
+                        ? "علامت‌گذاری به‌عنوان موجود"
+                        : "علامت‌گذاری به‌عنوان فروخته‌شده"}
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        deleteProduct(product.id)
+                      }
+                      className="rounded-2xl bg-red-500/10 px-4 py-3 font-bold text-red-300 transition hover:bg-red-500/20"
+                    >
+                      حذف اکانت
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </main>
+  );
+}
+
+export default function AdminAccountsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          dir="rtl"
+          className="min-h-screen bg-[#07070a] text-white"
+        >
+          <div className="mx-auto max-w-7xl px-4 py-10 text-center text-zinc-400">
+            در حال بارگذاری...
+          </div>
+        </main>
+      }
+    >
+      <AccountsPageContent />
+    </Suspense>
   );
 }
