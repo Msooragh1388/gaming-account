@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const STORAGE_BUCKET = "product-media";
@@ -37,30 +38,25 @@ type FullProduct = Product & {
   accountPassword: string;
 };
 
-function createSlug(text: string) {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w\u0600-\u06ff-]/g, "");
-}
-
 export default function AdminPage() {
+  const router = useRouter();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [games, setGames] = useState<Game[]>([]);
+  const [purchaseCount, setPurchaseCount] = useState(0);
 
   const [loadingProducts, setLoadingProducts] =
     useState(true);
+
   const [loadingGames, setLoadingGames] =
     useState(true);
+
   const [loadingEdit, setLoadingEdit] =
     useState(false);
 
   const [message, setMessage] = useState("");
 
   const [showAddModal, setShowAddModal] =
-    useState(false);
-  const [showGameModal, setShowGameModal] =
     useState(false);
 
   const [editingProduct, setEditingProduct] =
@@ -92,8 +88,6 @@ export default function AdminPage() {
   // IMAGE STATES
   // =========================================
 
-  // شماره عکس اصلی در لیست ترکیبی
-  // عکس‌های آپلودشده + عکس‌های جدید
   const [mainImageIndex, setMainImageIndex] =
     useState(0);
 
@@ -108,11 +102,6 @@ export default function AdminPage() {
     useState("");
 
   const [saving, setSaving] = useState(false);
-
-  const [newGameName, setNewGameName] =
-    useState("");
-  const [addingGame, setAddingGame] =
-    useState(false);
 
   // =========================================
   // CREATE PREVIEWS FOR NEW IMAGES
@@ -210,180 +199,39 @@ export default function AdminPage() {
     setLoadingProducts(false);
   }
 
+  // =========================================
+  // LOAD PURCHASE COUNT
+  // =========================================
+
+  async function loadPurchaseCount() {
+    const { count, error } = await supabase
+      .from("Purchase")
+      .select("id", {
+        count: "exact",
+        head: true,
+      });
+
+    if (error) {
+      console.error(
+        "Purchase count error:",
+        error
+      );
+
+      return;
+    }
+
+    setPurchaseCount(count || 0);
+  }
+
+  // =========================================
+  // LOAD ALL DATA
+  // =========================================
+
   useEffect(() => {
     loadGames();
     loadProducts();
+    loadPurchaseCount();
   }, []);
-
-  // =========================================
-  // ADD GAME
-  // =========================================
-
-  async function handleAddGame(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-
-    const cleanName = newGameName.trim();
-
-    if (!cleanName) {
-      setMessage("نام بازی را وارد کن.");
-      return;
-    }
-
-    const slug = createSlug(cleanName);
-
-    if (!slug) {
-      setMessage("نام بازی معتبر نیست.");
-      return;
-    }
-
-    setAddingGame(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("Game")
-      .insert({
-        name: cleanName,
-        slug,
-        active: true,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error(error);
-
-      if (error.code === "23505") {
-        setMessage("این بازی قبلاً وجود دارد.");
-      } else {
-        setMessage(
-          `خطا در اضافه کردن بازی: ${error.message}`
-        );
-      }
-
-      setAddingGame(false);
-      return;
-    }
-
-    if (data) {
-      setGames((current) => [
-        ...current,
-        data,
-      ]);
-    }
-
-    setNewGameName("");
-    setShowGameModal(false);
-
-    setGame(cleanName);
-
-    setMessage(
-      `بازی «${cleanName}» با موفقیت اضافه شد.`
-    );
-
-    setAddingGame(false);
-  }
-
-  // =========================================
-  // TOGGLE GAME
-  // =========================================
-
-  async function toggleGame(gameItem: Game) {
-    setMessage("");
-
-    const { error } = await supabase
-      .from("Game")
-      .update({
-        active: !gameItem.active,
-      })
-      .eq("id", gameItem.id);
-
-    if (error) {
-      console.error(error);
-
-      setMessage(
-        `خطا در تغییر وضعیت بازی: ${error.message}`
-      );
-
-      return;
-    }
-
-    setGames((current) =>
-      current.map((item) =>
-        item.id === gameItem.id
-          ? {
-              ...item,
-              active: !item.active,
-            }
-          : item
-      )
-    );
-
-    setMessage(
-      gameItem.active
-        ? `بازی «${gameItem.name}» غیرفعال شد.`
-        : `بازی «${gameItem.name}» فعال شد.`
-    );
-  }
-
-  // =========================================
-  // DELETE GAME
-  // =========================================
-
-  async function deleteGame(gameItem: Game) {
-    const usedByProduct = products.some(
-      (product) =>
-        product.game === gameItem.name
-    );
-
-    if (usedByProduct) {
-      setMessage(
-        "این بازی برای حداقل یک اکانت استفاده شده و فعلاً قابل حذف نیست. می‌توانی آن را غیرفعال کنی."
-      );
-
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `آیا مطمئنی می‌خواهی بازی «${gameItem.name}» را حذف کنی؟`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setMessage("");
-
-    const { error } = await supabase
-      .from("Game")
-      .delete()
-      .eq("id", gameItem.id);
-
-    if (error) {
-      console.error(error);
-
-      setMessage(
-        `خطا در حذف بازی: ${error.message}`
-      );
-
-      return;
-    }
-
-    setGames((current) =>
-      current.filter(
-        (item) => item.id !== gameItem.id
-      )
-    );
-
-    if (game === gameItem.name) {
-      setGame("");
-    }
-
-    setMessage(
-      `بازی «${gameItem.name}» حذف شد.`
-    );
-  }
 
   // =========================================
   // RESET ACCOUNT FORM
@@ -658,8 +506,6 @@ export default function AdminPage() {
       return;
     }
 
-    // فعلاً فقط از فرم حذف می‌کنیم.
-    // بعد از ذخیره، فایل از Storage هم حذف می‌شود.
     setUploadedVideo("");
   }
 
@@ -833,7 +679,9 @@ export default function AdminPage() {
           const newImages: string[] = [];
 
           for (const file of selectedImages) {
-            const url = await uploadImage(file);
+            const url =
+              await uploadImage(file);
+
             newImages.push(url);
           }
 
@@ -945,7 +793,7 @@ export default function AdminPage() {
         }
 
         // ===================================
-        // REMOVE OLD VIDEO IF REPLACED/REMOVED
+        // REMOVE OLD VIDEO
         // ===================================
 
         if (
@@ -981,7 +829,9 @@ export default function AdminPage() {
       // ===================================
 
       for (const file of selectedImages) {
-        const url = await uploadImage(file);
+        const url =
+          await uploadImage(file);
+
         finalImages.push(url);
       }
 
@@ -1249,14 +1099,6 @@ export default function AdminPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() =>
-                setShowGameModal(true)
-              }
-              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-bold transition hover:bg-white/10"
-            >
-              🎮 مدیریت بازی‌ها
-            </button>
 
             <button
               onClick={openAddModal}
@@ -1264,6 +1106,7 @@ export default function AdminPage() {
             >
               + افزودن اکانت
             </button>
+
           </div>
         </div>
 
@@ -1277,8 +1120,17 @@ export default function AdminPage() {
 
         {/* STATS */}
 
-        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-5">
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                "/admin/accounts?filter=all"
+              )
+            }
+            className="rounded-3xl border border-white/10 bg-white/5 p-5 text-right transition hover:bg-white/10 active:scale-[0.99]"
+          >
             <p className="text-sm text-zinc-400">
               کل اکانت‌ها
             </p>
@@ -1286,9 +1138,17 @@ export default function AdminPage() {
             <p className="mt-2 text-3xl font-black">
               {products.length}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                "/admin/accounts?filter=available"
+              )
+            }
+            className="rounded-3xl border border-white/10 bg-white/5 p-5 text-right transition hover:bg-white/10 active:scale-[0.99]"
+          >
             <p className="text-sm text-zinc-400">
               اکانت‌های موجود
             </p>
@@ -1296,9 +1156,17 @@ export default function AdminPage() {
             <p className="mt-2 text-3xl font-black">
               {availableCount}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                "/admin/accounts?filter=sold"
+              )
+            }
+            className="rounded-3xl border border-white/10 bg-white/5 p-5 text-right transition hover:bg-white/10 active:scale-[0.99]"
+          >
             <p className="text-sm text-zinc-400">
               فروخته‌شده
             </p>
@@ -1306,9 +1174,15 @@ export default function AdminPage() {
             <p className="mt-2 text-3xl font-black">
               {soldCount}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/admin/games")
+            }
+            className="rounded-3xl border border-white/10 bg-white/5 p-5 text-right transition hover:bg-white/10 active:scale-[0.99]"
+          >
             <p className="text-sm text-zinc-400">
               بازی‌ها
             </p>
@@ -1316,7 +1190,24 @@ export default function AdminPage() {
             <p className="mt-2 text-3xl font-black">
               {games.length}
             </p>
-          </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/admin/buyers")
+            }
+            className="rounded-3xl border border-white/10 bg-white/5 p-5 text-right transition hover:bg-white/10 active:scale-[0.99]"
+          >
+            <p className="text-sm text-zinc-400">
+              خریداران
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {purchaseCount}
+            </p>
+          </button>
+
         </div>
 
         {/* PRODUCTS */}
@@ -1369,6 +1260,7 @@ export default function AdminPage() {
 
                       <div className="min-w-0">
                         <div className="mb-2 flex flex-wrap gap-2">
+
                           <span className="rounded-lg bg-white/10 px-2 py-1 text-xs text-zinc-300">
                             {product.game}
                           </span>
@@ -1382,6 +1274,7 @@ export default function AdminPage() {
                               موجود
                             </span>
                           )}
+
                         </div>
 
                         <h3 className="truncate text-lg font-bold">
@@ -1404,6 +1297,7 @@ export default function AdminPage() {
                     {/* ACTIONS */}
 
                     <div className="flex flex-wrap gap-2">
+
                       <button
                         onClick={() =>
                           openEditModal(product)
@@ -1435,7 +1329,9 @@ export default function AdminPage() {
                       >
                         حذف
                       </button>
+
                     </div>
+
                   </div>
                 </div>
               ))}
@@ -1453,6 +1349,7 @@ export default function AdminPage() {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/10 bg-[#101014] p-6 shadow-2xl">
 
             <div className="mb-6 flex items-center justify-between">
+
               <div>
                 <h2 className="text-xl font-black">
                   {editingProduct
@@ -1471,6 +1368,7 @@ export default function AdminPage() {
               >
                 ✕
               </button>
+
             </div>
 
             <form
@@ -1482,6 +1380,7 @@ export default function AdminPage() {
 
               <div>
                 <div className="mb-2 flex items-center justify-between">
+
                   <label className="text-sm font-bold">
                     بازی
                   </label>
@@ -1489,18 +1388,23 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setShowGameModal(true)
+                      router.push(
+                        "/admin/games"
+                      )
                     }
                     className="text-xs font-bold text-blue-400 hover:text-blue-300"
                   >
                     + افزودن بازی
                   </button>
+
                 </div>
 
                 <select
                   value={game}
                   onChange={(event) =>
-                    setGame(event.target.value)
+                    setGame(
+                      event.target.value
+                    )
                   }
                   className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
                 >
@@ -1531,7 +1435,9 @@ export default function AdminPage() {
                 <input
                   value={title}
                   onChange={(event) =>
-                    setTitle(event.target.value)
+                    setTitle(
+                      event.target.value
+                    )
                   }
                   placeholder="مثلاً اکانت لول بالا"
                   className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
@@ -1568,7 +1474,9 @@ export default function AdminPage() {
                 <input
                   value={price}
                   onChange={(event) =>
-                    setPrice(event.target.value)
+                    setPrice(
+                      event.target.value
+                    )
                   }
                   inputMode="numeric"
                   placeholder="مثلاً 2500000"
@@ -1624,9 +1532,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* ================================= */}
               {/* IMAGES */}
-              {/* ================================= */}
 
               <div>
                 <label className="mb-2 block text-sm font-bold">
@@ -1641,13 +1547,9 @@ export default function AdminPage() {
                   className="block w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-300"
                 />
 
-                {/* IMAGE PREVIEW GRID */}
-
                 {(uploadedImages.length > 0 ||
                   selectedImages.length > 0) && (
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-
-                    {/* UPLOADED IMAGES */}
 
                     {uploadedImages.map(
                       (image, index) => {
@@ -1670,8 +1572,6 @@ export default function AdminPage() {
                               className="aspect-square w-full object-cover"
                             />
 
-                            {/* DELETE */}
-
                             <button
                               type="button"
                               onClick={() =>
@@ -1680,12 +1580,9 @@ export default function AdminPage() {
                                 )
                               }
                               className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-black text-white shadow-lg transition hover:bg-red-600"
-                              title="حذف عکس"
                             >
                               ×
                             </button>
-
-                            {/* MAIN */}
 
                             <button
                               type="button"
@@ -1708,8 +1605,6 @@ export default function AdminPage() {
                         );
                       }
                     )}
-
-                    {/* NEW SELECTED IMAGES */}
 
                     {selectedImagePreviews.map(
                       (preview, index) => {
@@ -1738,13 +1633,9 @@ export default function AdminPage() {
                               className="aspect-square w-full object-cover"
                             />
 
-                            {/* NEW BADGE */}
-
                             <div className="absolute left-2 top-2 z-10 rounded-lg bg-blue-500 px-2 py-1 text-[10px] font-bold text-white shadow-lg">
                               جدید
                             </div>
-
-                            {/* DELETE */}
 
                             <button
                               type="button"
@@ -1754,12 +1645,9 @@ export default function AdminPage() {
                                 )
                               }
                               className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-black text-white shadow-lg transition hover:bg-red-600"
-                              title="حذف عکس"
                             >
                               ×
                             </button>
-
-                            {/* MAIN */}
 
                             <button
                               type="button"
@@ -1782,6 +1670,7 @@ export default function AdminPage() {
                         );
                       }
                     )}
+
                   </div>
                 )}
 
@@ -1802,9 +1691,7 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* ================================= */}
               {/* VIDEO */}
-              {/* ================================= */}
 
               <div>
                 <label className="mb-2 block text-sm font-bold">
@@ -1818,10 +1705,9 @@ export default function AdminPage() {
                   className="block w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-300"
                 />
 
-                {/* CURRENT VIDEO */}
-
                 {uploadedVideo && (
                   <div className="relative mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
+
                     <video
                       src={uploadedVideo}
                       controls
@@ -1839,18 +1725,17 @@ export default function AdminPage() {
                         deleteUploadedVideo
                       }
                       className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-xl font-black text-white shadow-lg transition hover:bg-red-600"
-                      title="حذف ویدیوی فعلی"
                     >
                       ×
                     </button>
+
                   </div>
                 )}
-
-                {/* NEW VIDEO */}
 
                 {selectedVideo &&
                   selectedVideoPreview && (
                     <div className="relative mt-4 overflow-hidden rounded-2xl border-2 border-blue-500/50 bg-black">
+
                       <video
                         src={selectedVideoPreview}
                         controls
@@ -1868,7 +1753,6 @@ export default function AdminPage() {
                           deleteSelectedVideo
                         }
                         className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-xl font-black text-white shadow-lg transition hover:bg-red-600"
-                        title="حذف ویدیوی جدید"
                       >
                         ×
                       </button>
@@ -1876,6 +1760,7 @@ export default function AdminPage() {
                       <div className="border-t border-white/10 bg-black/50 px-3 py-2 text-xs text-zinc-400">
                         {selectedVideo.name}
                       </div>
+
                     </div>
                   )}
 
@@ -1898,6 +1783,7 @@ export default function AdminPage() {
               {/* BUTTONS */}
 
               <div className="flex gap-3 pt-2">
+
                 <button
                   type="button"
                   onClick={closeAddModal}
@@ -1918,140 +1804,10 @@ export default function AdminPage() {
                     ? "ذخیره تغییرات"
                     : "ثبت اکانت"}
                 </button>
+
               </div>
+
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ===================================== */}
-      {/* GAME MANAGEMENT MODAL */}
-      {/* ===================================== */}
-
-      {showGameModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-white/10 bg-[#101014] p-6 shadow-2xl">
-
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black">
-                  مدیریت بازی‌ها
-                </h2>
-
-                <p className="mt-1 text-sm text-zinc-500">
-                  بازی‌های سایت را مدیریت کن
-                </p>
-              </div>
-
-              <button
-                onClick={() =>
-                  setShowGameModal(false)
-                }
-                className="rounded-xl px-3 py-2 text-zinc-400 hover:bg-white/5 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* ADD GAME */}
-
-            <form
-              onSubmit={handleAddGame}
-              className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4"
-            >
-              <label className="mb-2 block text-sm font-bold">
-                افزودن بازی جدید
-              </label>
-
-              <div className="flex gap-2">
-                <input
-                  value={newGameName}
-                  onChange={(event) =>
-                    setNewGameName(
-                      event.target.value
-                    )
-                  }
-                  placeholder="مثلاً Clash Royale"
-                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
-                />
-
-                <button
-                  type="submit"
-                  disabled={addingGame}
-                  className="rounded-xl bg-white px-5 py-3 font-bold text-black disabled:opacity-50"
-                >
-                  {addingGame
-                    ? "..."
-                    : "افزودن"}
-                </button>
-              </div>
-            </form>
-
-            {/* GAMES LIST */}
-
-            <div className="space-y-3">
-              {loadingGames ? (
-                <div className="rounded-2xl bg-white/5 p-5 text-center text-zinc-400">
-                  در حال دریافت بازی‌ها...
-                </div>
-              ) : games.length === 0 ? (
-                <div className="rounded-2xl bg-white/5 p-5 text-center text-zinc-400">
-                  هنوز بازی‌ای ثبت نشده است.
-                </div>
-              ) : (
-                games.map((gameItem) => (
-                  <div
-                    key={gameItem.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-bold">
-                        {gameItem.name}
-                      </p>
-
-                      <p className="mt-1 text-xs text-zinc-500">
-                        {gameItem.active
-                          ? "فعال"
-                          : "غیرفعال"}
-                      </p>
-                    </div>
-
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        onClick={() =>
-                          toggleGame(gameItem)
-                        }
-                        className={`rounded-xl px-3 py-2 text-xs font-bold ${
-                          gameItem.active
-                            ? "bg-green-500/10 text-green-400"
-                            : "bg-zinc-500/10 text-zinc-400"
-                        }`}
-                      >
-                        {gameItem.active
-                          ? "فعال"
-                          : "غیرفعال"}
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          deleteGame(gameItem)
-                        }
-                        className="rounded-xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20"
-                      >
-                        حذف
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <button
-              onClick={loadGames}
-              className="mt-5 w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/5"
-            >
-              ↻ بروزرسانی بازی‌ها
-            </button>
           </div>
         </div>
       )}

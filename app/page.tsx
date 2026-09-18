@@ -618,9 +618,8 @@ export default function Home() {
   ) {
     if (
       !selectedProduct ||
-      selectedImage < 0 ||
       !selectedProduct.images ||
-      selectedProduct.images.length <= 1
+      selectedProduct.images.length === 0
     ) {
       return;
     }
@@ -638,9 +637,8 @@ export default function Home() {
   ) {
     if (
       !selectedProduct ||
-      selectedImage < 0 ||
       !selectedProduct.images ||
-      selectedProduct.images.length <= 1
+      selectedProduct.images.length === 0
     ) {
       touchStartX.current = null;
       touchStartY.current = null;
@@ -681,15 +679,52 @@ export default function Home() {
     const imageCount =
       selectedProduct.images.length;
 
-    if (deltaX < 0) {
-      setSelectedImage((current) =>
-        Math.min(current + 1, imageCount - 1)
-      );
-    } else {
-      setSelectedImage((current) =>
-        Math.max(current - 1, 0)
-      );
+    const lastImageIndex = imageCount - 1;
+
+    const hasVideo =
+      Boolean(selectedProduct.videoUrl);
+
+    // سوایپ به راست = آیتم بعدی
+    if (deltaX > 0) {
+      setSelectedImage((current) => {
+        // اگر روی ویدیو هستیم، به عکس اول برگرد
+        if (current === -1) {
+          return 0;
+        }
+
+        // رفتن به عکس بعدی
+        if (current < lastImageIndex) {
+          return current + 1;
+        }
+
+        // آخرین عکس → ویدیو
+        if (
+          current === lastImageIndex &&
+          hasVideo
+        ) {
+          return -1;
+        }
+
+        return current;
+      });
+
+      return;
     }
+
+    // سوایپ به چپ = آیتم قبلی
+    setSelectedImage((current) => {
+      // ویدیو → آخرین عکس
+      if (current === -1) {
+        return lastImageIndex;
+      }
+
+      // عکس قبلی
+      if (current > 0) {
+        return current - 1;
+      }
+
+      return current;
+    });
   }
 
   async function completePurchase() {
@@ -1225,14 +1260,6 @@ export default function Home() {
                     </span>
                   </div>
                 )}
-
-                {selectedProduct.images &&
-                  selectedProduct.images.length > 1 &&
-                  selectedImage >= 0 && (
-                    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-[10px] text-white backdrop-blur sm:hidden">
-                      ← عکس قبلی | عکس بعدی →
-                    </div>
-                  )}
               </div>
 
               {((selectedProduct.images &&

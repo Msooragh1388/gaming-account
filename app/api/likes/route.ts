@@ -10,27 +10,40 @@ export async function POST(request: Request) {
         ? body.token.trim()
         : "";
 
+    const productId = Number(body?.productId);
+
     if (!token) {
       return NextResponse.json(
         {
           success: false,
           loggedIn: false,
-          likedProductIds: [],
+          error: "برای لایک کردن ابتدا وارد حساب شوید.",
         },
         { status: 401 }
       );
     }
 
+    if (!Number.isInteger(productId) || productId <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "شناسه محصول نامعتبر است.",
+        },
+        { status: 400 }
+      );
+    }
+
     const { data, error } = await supabase.rpc(
-      "get_user_product_likes",
+      "toggle_product_like",
       {
         p_token: token,
+        p_product_id: productId,
       }
     );
 
     if (error) {
       console.error(
-        "get_user_product_likes error:",
+        "toggle_product_like error:",
         error
       );
 
@@ -43,18 +56,26 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!data?.success) {
+      return NextResponse.json(
+        data,
+        {
+          status:
+            data?.loggedIn === false
+              ? 401
+              : 400,
+        }
+      );
+    }
+
     return NextResponse.json(data);
   } catch (error) {
-    console.error(
-      "Likes list API error:",
-      error
-    );
+    console.error("Like API error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error:
-          "خطایی در دریافت لایک‌ها رخ داد.",
+        error: "خطایی در ثبت لایک رخ داد.",
       },
       { status: 500 }
     );
