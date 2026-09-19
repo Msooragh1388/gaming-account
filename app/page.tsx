@@ -280,7 +280,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-      document.title = "15712619";
+      document.title = "۱۵۷۱۲۶۱۹"
     loadGames();
     loadProducts();
     loadUserLikes();
