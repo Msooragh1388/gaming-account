@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Gaming Account",
   description: "فروشگاه اکانت‌های بازی",
+  other: {
+    enamad: "15712619",
+  },
 };
 
 export default function RootLayout({
@@ -30,10 +33,6 @@ export default function RootLayout({
       dir="rtl"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <meta name="enamad" content="15712619" />
-      </head>
-
       <body className="min-h-full bg-slate-950">
         {children}
         <BottomNav />
