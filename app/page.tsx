@@ -33,6 +33,8 @@ type PurchasedAccount = {
   game: string;
   accountUsername: string;
   accountPassword: string;
+  backupPassword1: string | null;
+  backupPassword2: string | null;
   price: number;
 };
 
@@ -833,6 +835,8 @@ export default function Home() {
         game: data.game,
         accountUsername: data.accountUsername,
         accountPassword: data.accountPassword,
+        backupPassword1: data.backupPassword1 ?? null,
+        backupPassword2: data.backupPassword2 ?? null,
         price: Number(data.price),
       });
     }
@@ -1849,6 +1853,48 @@ export default function Home() {
                             : "••••••••••••"}
                         </p>
                       </div>
+
+                      {account.backupPassword1 && (
+                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-slate-500">
+                              رمز بکاپ اول
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => togglePassword(account.purchaseId)}
+                              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
+                              aria-label={passwordVisible ? "مخفی کردن رمز" : "نمایش رمز"}
+                            >
+                              <EyeIcon open={passwordVisible} />
+                            </button>
+                          </div>
+                          <p dir="ltr" className="mt-2 break-all text-sm font-bold text-white">
+                            {passwordVisible ? account.backupPassword1 : "••••••••••••"}
+                          </p>
+                        </div>
+                      )}
+
+                      {account.backupPassword2 && (
+                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-slate-500">
+                              رمز بکاپ دوم
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => togglePassword(account.purchaseId)}
+                              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
+                              aria-label={passwordVisible ? "مخفی کردن رمز" : "نمایش رمز"}
+                            >
+                              <EyeIcon open={passwordVisible} />
+                            </button>
+                          </div>
+                          <p dir="ltr" className="mt-2 break-all text-sm font-bold text-white">
+                            {passwordVisible ? account.backupPassword2 : "••••••••••••"}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

@@ -36,6 +36,8 @@ type Product = {
 type FullProduct = Product & {
   accountUsername: string;
   accountPassword: string;
+  backupPassword1: string | null;
+  backupPassword2: string | null;
 };
 
 export default function AdminPage() {
@@ -70,6 +72,10 @@ export default function AdminPage() {
   const [accountUsername, setAccountUsername] =
     useState("");
   const [accountPassword, setAccountPassword] =
+    useState("");
+  const [backupPassword1, setBackupPassword1] =
+    useState("");
+  const [backupPassword2, setBackupPassword2] =
     useState("");
 
   const [selectedImages, setSelectedImages] =
@@ -203,25 +209,21 @@ export default function AdminPage() {
   // LOAD PURCHASE COUNT
   // =========================================
 
-  async function loadPurchaseCount() {
-    const { count, error } = await supabase
-      .from("Purchase")
-      .select("id", {
-        count: "exact",
-        head: true,
-      });
+ async function loadPurchaseCount() {
+  const { data, error } = await supabase.rpc(
+    "get_admin_purchases"
+  );
 
-    if (error) {
-      console.error(
-        "Purchase count error:",
-        error
-      );
-
-      return;
-    }
-
-    setPurchaseCount(count || 0);
+  if (error) {
+    console.error(
+      "get_admin_purchases error:",
+      error
+    );
+    return;
   }
+
+  setPurchaseCount(Array.isArray(data) ? data.length : 0);
+}
 
   // =========================================
   // LOAD ALL DATA
@@ -248,6 +250,8 @@ export default function AdminPage() {
     setPrice("");
     setAccountUsername("");
     setAccountPassword("");
+    setBackupPassword1("");
+    setBackupPassword2("");
 
     setSelectedImages([]);
     setSelectedVideo(null);
@@ -330,6 +334,12 @@ export default function AdminPage() {
 
     setAccountPassword(
       fullProduct.accountPassword || ""
+    );
+    setBackupPassword1(
+      fullProduct.backupPassword1 || ""
+    );
+    setBackupPassword2(
+      fullProduct.backupPassword2 || ""
     );
 
     setSelectedImages([]);
@@ -745,6 +755,9 @@ export default function AdminPage() {
               p_account_password:
                 accountPassword,
 
+              p_backup_password1: backupPassword1,
+              p_backup_password2: backupPassword2,
+
               p_images:
                 finalImages.length > 0
                   ? finalImages
@@ -896,6 +909,9 @@ export default function AdminPage() {
 
           accountPassword:
             accountPassword,
+
+          backupPassword1,
+          backupPassword2,
 
           isSold: false,
           likes: 0,
@@ -1530,6 +1546,41 @@ export default function AdminPage() {
                   placeholder="رمز عبور اکانت"
                   className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-white/30"
                 />
+              </div>
+
+              {/* BACKUP PASSWORDS */}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-2 block text-sm font-bold">
+                    رمز بکاپ اول
+                  </label>
+                  <input
+                    value={backupPassword1}
+                    onChange={(event) =>
+                      setBackupPassword1(event.target.value)
+                    }
+                    type="text"
+                    autoComplete="off"
+                    placeholder="رمز بکاپ اول"
+                    className="w-full min-w-0 rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none focus:border-white/30"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-bold">
+                    رمز بکاپ دوم
+                  </label>
+                  <input
+                    value={backupPassword2}
+                    onChange={(event) =>
+                      setBackupPassword2(event.target.value)
+                    }
+                    type="text"
+                    autoComplete="off"
+                    placeholder="رمز بکاپ دوم"
+                    className="w-full min-w-0 rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none focus:border-white/30"
+                  />
+                </div>
               </div>
 
               {/* IMAGES */}
