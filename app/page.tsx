@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -150,8 +149,15 @@ export default function Home() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
-  const [fullName, setFullName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<
+    "wallet" | "gateway"
+  >("wallet");
+
+  const [walletBalance, setWalletBalance] = useState<number | null>(
+    null
+  );
+
+  const [walletLoading, setWalletLoading] = useState(false);
 
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -280,7 +286,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-      document.title = "۱۵۷۱۲۶۱۹"
+    document.title = "۱۵۷۱۲۶۱۹";
+
     loadGames();
     loadProducts();
     loadUserLikes();
@@ -575,7 +582,54 @@ export default function Home() {
     setCartOpen(false);
   }
 
-  function openCheckout() {
+  async function loadWalletBalance() {
+    const token = localStorage.getItem(
+      "gaming_account_token"
+    );
+
+    if (!token) {
+      setWalletBalance(null);
+      return;
+    }
+
+    setWalletLoading(true);
+
+    try {
+      const response = await fetch("/api/wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          action: "get",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Wallet balance error:", data);
+        setWalletBalance(null);
+        return;
+      }
+
+      const balance = Number(data?.wallet?.balance);
+
+      if (Number.isFinite(balance)) {
+        setWalletBalance(balance);
+      } else {
+        setWalletBalance(0);
+      }
+    } catch (error) {
+      console.error("Load wallet balance error:", error);
+      setWalletBalance(null);
+    } finally {
+      setWalletLoading(false);
+    }
+  }
+
+  async function openCheckout() {
     if (cartProducts.length === 0) {
       setMessage("سبد خرید شما خالی است");
       return;
@@ -601,7 +655,10 @@ export default function Home() {
       return;
     }
 
+    setPaymentMethod("wallet");
     setCheckoutOpen(true);
+
+    await loadWalletBalance();
   }
 
   function closeCheckout() {
@@ -747,137 +804,195 @@ export default function Home() {
       return;
     }
 
-    const cleanName = fullName.trim();
-
-    const cleanPhone = phoneNumber.replace(/\s/g, "");
-
-    if (!cleanName) {
-      setMessage(
-        "لطفاً نام و نام خانوادگی خود را وارد کنید"
-      );
-      return;
-    }
-
-    if (cleanName.length < 3) {
-      setMessage(
-        "لطفاً نام و نام خانوادگی را کامل وارد کنید"
-      );
-      return;
-    }
-
-    if (!cleanPhone) {
-      setMessage(
-        "لطفاً شماره موبایل خود را وارد کنید"
-      );
-      return;
-    }
-
-    if (!/^09\d{9}$/.test(cleanPhone)) {
-      setMessage(
-        "شماره موبایل باید با 09 شروع شود و 11 رقم باشد"
-      );
-      return;
-    }
-
     if (cartProducts.length === 0) {
       setMessage("سبد خرید شما خالی است");
       setCheckoutOpen(false);
       return;
     }
 
+    if (paymentMethod === "gateway") {
+      setMessage("درگاه پرداخت هنوز فعال نشده است");
+      return;
+    }
+
     setCheckoutLoading(true);
 
-    const purchased: PurchasedAccount[] = [];
+    try {
+      const productIds = cartProducts
+        .map((product) => Number(product.id))
+        .filter(
+          (id) => Number.isInteger(id) && id > 0
+        );
 
-    for (const product of cartProducts) {
-      const { data, error } =
-        await supabase.rpc("create_purchase", {
-          p_token: token,
-          p_product_id: product.id,
-          p_product_title: product.title,
-          p_game: product.game,
-          p_price: Number(product.price),
-
-          // اطلاعات فرم سفارش
-          p_full_name: cleanName,
-          p_phone_number: cleanPhone,
-        });
-
-      if (error) {
-        console.error(
-          "create_purchase error:",
-          error
+      if (productIds.length === 0) {
+        setMessage(
+          "محصول معتبری برای خرید وجود ندارد"
         );
 
         setCheckoutLoading(false);
+        return;
+      }
 
-        setMessage(
-          `ثبت سفارش ناموفق بود: ${error.message}`
+      const { data, error } = await supabase.rpc(
+        "purchase_with_wallet",
+        {
+          p_token: token,
+          p_product_ids: productIds,
+        }
+      );
+
+      if (error) {
+        console.error(
+          "purchase_with_wallet error:",
+          error
         );
 
+        setMessage(
+          `پرداخت ناموفق بود: ${error.message}`
+        );
+
+        setCheckoutLoading(false);
         return;
       }
 
       if (!data?.success) {
-        setCheckoutLoading(false);
-
-        setMessage(
-          data?.error ||
-            "ثبت سفارش ناموفق بود."
+        const balance = Number(
+          data?.balance ??
+            walletBalance ??
+            0
         );
 
+        const total = Number(
+          data?.total ??
+            cartTotal
+        );
+
+        setWalletBalance(balance);
+
+        if (
+          data?.error ===
+          "موجودی کیف پول کافی نیست."
+        ) {
+          setMessage(
+            `موجودی کافی نیست. ${formatPrice(
+              Math.max(total - balance, 0)
+            )} تومان دیگر نیاز دارید.`
+          );
+        } else {
+          setMessage(
+            data?.error ||
+              "پرداخت و ثبت سفارش ناموفق بود."
+          );
+        }
+
+        setCheckoutLoading(false);
         return;
       }
 
-      purchased.push({
-        purchaseId: Number(data.purchaseId),
-        productId: Number(data.productId),
-        productTitle: data.productTitle,
-        game: data.game,
-        accountUsername: data.accountUsername,
-        accountPassword: data.accountPassword,
-        backupPassword1: data.backupPassword1 ?? null,
-        backupPassword2: data.backupPassword2 ?? null,
-        price: Number(data.price),
-      });
-    }
-
-    setPurchasedAccounts(purchased);
-    setVisiblePasswords([]);
-
-    setCart([]);
-
-    localStorage.setItem(
-      "gaming_account_cart",
-      JSON.stringify([])
-    );
-
-    window.dispatchEvent(
-      new Event("gaming-cart-updated")
-    );
-
-    setProducts((current) =>
-      current.map((product) =>
-        purchased.some(
-          (item) => item.productId === product.id
-        )
-          ? {
-              ...product,
-              isSold: true,
-            }
-          : product
+      const accounts = Array.isArray(
+        data.purchases
       )
-    );
+        ? data.purchases
+        : [];
 
-    setCheckoutLoading(false);
+      const purchased: PurchasedAccount[] =
+        accounts.map((account: any) => ({
+          purchaseId: Number(
+            account.purchaseId
+          ),
 
-    setCheckoutOpen(false);
-    setCartOpen(false);
+          productId: Number(
+            account.productId
+          ),
 
-    setFullName("");
-    setPhoneNumber("");
+          productTitle: String(
+            account.productTitle ?? ""
+          ),
 
-    setPurchaseComplete(true);
+          game: String(
+            account.game ?? ""
+          ),
+
+          accountUsername: String(
+            account.accountUsername ?? ""
+          ),
+
+          accountPassword: String(
+            account.accountPassword ?? ""
+          ),
+
+          backupPassword1:
+            account.backupPassword1 ?? null,
+
+          backupPassword2:
+            account.backupPassword2 ?? null,
+
+          price: Number(
+            account.price ?? 0
+          ),
+        }));
+
+      if (purchased.length === 0) {
+        setMessage(
+          "خرید انجام شد اما اطلاعات سفارش دریافت نشد."
+        );
+
+        setCheckoutLoading(false);
+        return;
+      }
+
+      setPurchasedAccounts(purchased);
+
+      setVisiblePasswords([]);
+
+      setWalletBalance(
+        Number(data.newBalance ?? 0)
+      );
+
+      setCart([]);
+
+      localStorage.setItem(
+        "gaming_account_cart",
+        JSON.stringify([])
+      );
+
+      window.dispatchEvent(
+        new Event("gaming-cart-updated")
+      );
+
+      setProducts((current) =>
+        current.map((product) =>
+          purchased.some(
+            (item) =>
+              item.productId === product.id
+          )
+            ? {
+                ...product,
+                isSold: true,
+              }
+            : product
+        )
+      );
+
+      setCheckoutLoading(false);
+
+      setCheckoutOpen(false);
+
+      setCartOpen(false);
+
+      setPurchaseComplete(true);
+    } catch (error) {
+      console.error(
+        "Complete purchase error:",
+        error
+      );
+
+      setCheckoutLoading(false);
+
+      setMessage(
+        "خطایی هنگام پرداخت و ثبت خرید رخ داد."
+      );
+    }
   }
 
   return (
@@ -1642,13 +1757,13 @@ export default function Home() {
                 type="button"
                 onClick={closeCheckout}
                 disabled={checkoutLoading}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg disabled:opacity-50"
               >
                 →
               </button>
 
               <h1 className="text-lg font-black">
-                تکمیل سفارش
+                تکمیل خرید
               </h1>
 
               <div className="w-10" />
@@ -1657,56 +1772,111 @@ export default function Home() {
 
           <div className="mx-auto max-w-md px-4 py-8">
             <div className="text-center">
-              <div className="text-5xl">📦</div>
+              <div className="text-5xl">💳</div>
 
               <h2 className="mt-4 text-xl font-black">
-                ثبت نهایی سفارش
+                انتخاب روش پرداخت
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                در حال حاضر درگاه پرداخت فعال نیست. با ثبت سفارش، سفارش شما نهایی می‌شود و اطلاعات اکانت نمایش داده خواهد شد.
+                روش پرداخت موردنظر خود را انتخاب کنید.
               </p>
             </div>
 
-            <label className="mt-8 block text-sm font-bold">
-              نام و نام خانوادگی
-            </label>
+            <button
+              type="button"
+              disabled
+              className="mt-8 w-full rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-right opacity-60"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-2xl">
+                  🔒
+                </div>
 
-            <input
-              type="text"
-              value={fullName}
-              onChange={(event) =>
-                setFullName(event.target.value)
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-black">
+                      درگاه پرداخت
+                    </h3>
+
+                    <span className="rounded-xl bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
+                      به‌زودی
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    پرداخت آنلاین فعلاً فعال نیست.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setPaymentMethod("wallet")
               }
-              placeholder="مثلاً محمد سراغی"
-              className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-white outline-none placeholder:text-slate-600 focus:border-indigo-400"
-            />
+              disabled={checkoutLoading}
+              className={`mt-3 w-full rounded-3xl border p-5 text-right transition ${
+                paymentMethod === "wallet"
+                  ? "border-emerald-400/40 bg-emerald-500/10"
+                  : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl ${
+                    paymentMethod === "wallet"
+                      ? "bg-emerald-500/20"
+                      : "bg-white/5"
+                  }`}
+                >
+                  💰
+                </div>
 
-            <label className="mt-5 block text-sm font-bold">
-              شماره موبایل
-            </label>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-black">
+                      کیف پول
+                    </h3>
 
-            <input
-              type="tel"
-              inputMode="numeric"
-              dir="ltr"
-              value={phoneNumber}
-              onChange={(event) => {
-                const value =
-                  event.target.value.replace(
-                    /[^0-9]/g,
-                    ""
-                  );
+                    {paymentMethod === "wallet" && (
+                      <span className="text-lg text-emerald-400">
+                        ✓
+                      </span>
+                    )}
+                  </div>
 
-                setPhoneNumber(
-                  value.slice(0, 11)
-                );
-              }}
-              placeholder="09123456789"
-              className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left text-white outline-none placeholder:text-slate-600 focus:border-indigo-400"
-            />
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    پرداخت مستقیم از موجودی کیف پول
+                  </p>
+                </div>
+              </div>
+            </button>
 
-            <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+            <div className="mt-5 rounded-3xl border border-indigo-400/10 bg-indigo-500/5 p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-400">
+                  موجودی کیف پول
+                </span>
+
+                {walletLoading ? (
+                  <span className="text-xs text-slate-500">
+                    در حال دریافت...
+                  </span>
+                ) : walletBalance !== null ? (
+                  <span className="text-base font-black text-white">
+                    {formatPrice(walletBalance)} تومان
+                  </span>
+                ) : (
+                  <span className="text-xs text-red-300">
+                    دریافت موجودی ناموفق بود
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">
                   تعداد اکانت
@@ -1726,21 +1896,67 @@ export default function Home() {
                   {formatPrice(cartTotal)} تومان
                 </span>
               </div>
+
+              {walletBalance !== null && (
+                <div className="mt-4 flex justify-between border-t border-white/10 pt-4">
+                  <span className="text-slate-400">
+                    موجودی پس از خرید
+                  </span>
+
+                  <span
+                    className={`font-bold ${
+                      walletBalance >= cartTotal
+                        ? "text-emerald-300"
+                        : "text-red-300"
+                    }`}
+                  >
+                    {walletBalance >= cartTotal
+                      ? `${formatPrice(
+                          walletBalance - cartTotal
+                        )} تومان`
+                      : "موجودی کافی نیست"}
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div className="mt-4 rounded-2xl border border-amber-400/10 bg-amber-500/5 p-4 text-xs leading-6 text-amber-200/80">
-              ⚠️ فعلاً پرداخت آنلاین نداریم. با زدن «تکمیل خرید» سفارش مستقیماً ثبت و اکانت تحویل داده می‌شود.
-            </div>
+            {walletBalance !== null &&
+              walletBalance < cartTotal && (
+                <div className="mt-4 rounded-2xl border border-red-400/10 bg-red-500/5 p-4 text-xs leading-6 text-red-200/80">
+                  ⚠️ موجودی کیف پول برای این خرید کافی نیست.
+                  <br />
+                  مبلغ موردنیاز:{" "}
+                  {formatPrice(
+                    cartTotal - walletBalance
+                  )}{" "}
+                  تومان
+                </div>
+              )}
+
+            {walletBalance !== null &&
+              walletBalance >= cartTotal && (
+                <div className="mt-4 rounded-2xl border border-emerald-400/10 bg-emerald-500/5 p-4 text-xs leading-6 text-emerald-200/80">
+                  ✓ موجودی کیف پول برای خرید کافی است.
+                  <br />
+                  پس از پرداخت، مبلغ خرید از کیف پول شما کسر می‌شود.
+                </div>
+              )}
 
             <button
               type="button"
-              disabled={checkoutLoading}
+              disabled={
+                checkoutLoading ||
+                walletLoading ||
+                paymentMethod !== "wallet" ||
+                walletBalance === null ||
+                walletBalance < cartTotal
+              }
               onClick={completePurchase}
-              className="mt-5 w-full rounded-2xl bg-white py-4 text-sm font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 w-full rounded-2xl bg-white py-4 text-sm font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {checkoutLoading
-                ? "در حال ثبت سفارش..."
-                : "تکمیل خرید"}
+                ? "در حال پرداخت و ثبت خرید..."
+                : "پرداخت با کیف پول"}
             </button>
           </div>
         </div>
@@ -1773,6 +1989,18 @@ export default function Home() {
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 اطلاعات ورود اکانت‌های خریداری‌شده را در پایین مشاهده می‌کنید.
               </p>
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-emerald-400/10 bg-emerald-500/5 p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-400">
+                  پرداخت از کیف پول
+                </span>
+
+                <span className="font-black text-emerald-300">
+                  موفق ✓
+                </span>
+              </div>
             </div>
 
             <div className="mt-8 space-y-4">
@@ -1861,17 +2089,36 @@ export default function Home() {
                             <p className="text-xs text-slate-500">
                               رمز بکاپ اول
                             </p>
+
                             <button
                               type="button"
-                              onClick={() => togglePassword(account.purchaseId)}
+                              onClick={() =>
+                                togglePassword(
+                                  account.purchaseId
+                                )
+                              }
                               className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
-                              aria-label={passwordVisible ? "مخفی کردن رمز" : "نمایش رمز"}
+                              aria-label={
+                                passwordVisible
+                                  ? "مخفی کردن رمز"
+                                  : "نمایش رمز"
+                              }
                             >
-                              <EyeIcon open={passwordVisible} />
+                              <EyeIcon
+                                open={
+                                  passwordVisible
+                                }
+                              />
                             </button>
                           </div>
-                          <p dir="ltr" className="mt-2 break-all text-sm font-bold text-white">
-                            {passwordVisible ? account.backupPassword1 : "••••••••••••"}
+
+                          <p
+                            dir="ltr"
+                            className="mt-2 break-all text-sm font-bold text-white"
+                          >
+                            {passwordVisible
+                              ? account.backupPassword1
+                              : "••••••••••••"}
                           </p>
                         </div>
                       )}
@@ -1882,17 +2129,36 @@ export default function Home() {
                             <p className="text-xs text-slate-500">
                               رمز بکاپ دوم
                             </p>
+
                             <button
                               type="button"
-                              onClick={() => togglePassword(account.purchaseId)}
+                              onClick={() =>
+                                togglePassword(
+                                  account.purchaseId
+                                )
+                              }
                               className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
-                              aria-label={passwordVisible ? "مخفی کردن رمز" : "نمایش رمز"}
+                              aria-label={
+                                passwordVisible
+                                  ? "مخفی کردن رمز"
+                                  : "نمایش رمز"
+                              }
                             >
-                              <EyeIcon open={passwordVisible} />
+                              <EyeIcon
+                                open={
+                                  passwordVisible
+                                }
+                              />
                             </button>
                           </div>
-                          <p dir="ltr" className="mt-2 break-all text-sm font-bold text-white">
-                            {passwordVisible ? account.backupPassword2 : "••••••••••••"}
+
+                          <p
+                            dir="ltr"
+                            className="mt-2 break-all text-sm font-bold text-white"
+                          >
+                            {passwordVisible
+                              ? account.backupPassword2
+                              : "••••••••••••"}
                           </p>
                         </div>
                       )}

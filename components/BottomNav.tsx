@@ -87,16 +87,16 @@ export default function BottomNav() {
   const [cartCount, setCartCount] = useState(0);
 
   function loadCartCount() {
-    const savedCart = localStorage.getItem(
-      "gaming_account_cart"
-    );
-
-    if (!savedCart) {
-      setCartCount(0);
-      return;
-    }
-
     try {
+      const savedCart = localStorage.getItem(
+        "gaming_account_cart"
+      );
+
+      if (!savedCart) {
+        setCartCount(0);
+        return;
+      }
+
       const parsed = JSON.parse(savedCart);
 
       if (Array.isArray(parsed)) {
@@ -110,10 +110,22 @@ export default function BottomNav() {
   }
 
   useEffect(() => {
-    loadCartCount();
+    // اولین بار بعد از mount
+    const initialTimer = window.setTimeout(() => {
+      loadCartCount();
+    }, 0);
 
     const handleCartUpdate = () => {
-      loadCartCount();
+      // جلوگیری از setState همزمان با render کامپوننت دیگر
+      window.setTimeout(() => {
+        loadCartCount();
+      }, 0);
+    };
+
+    const handleStorage = () => {
+      window.setTimeout(() => {
+        loadCartCount();
+      }, 0);
     };
 
     window.addEventListener(
@@ -123,10 +135,12 @@ export default function BottomNav() {
 
     window.addEventListener(
       "storage",
-      handleCartUpdate
+      handleStorage
     );
 
     return () => {
+      window.clearTimeout(initialTimer);
+
       window.removeEventListener(
         "gaming-cart-updated",
         handleCartUpdate
@@ -134,7 +148,7 @@ export default function BottomNav() {
 
       window.removeEventListener(
         "storage",
-        handleCartUpdate
+        handleStorage
       );
     };
   }, []);
@@ -155,6 +169,7 @@ export default function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-[200] h-14 border-t border-white/10 bg-slate-950"
     >
       <div className="mx-auto flex h-full max-w-md items-center justify-around px-8">
+
         {/* پروفایل */}
 
         <button
@@ -220,6 +235,7 @@ export default function BottomNav() {
           <HomeIcon />
           <span>خانه</span>
         </button>
+
       </div>
     </nav>
   );
