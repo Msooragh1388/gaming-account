@@ -133,6 +133,37 @@ function CartIcon() {
   );
 }
 
+function WalletIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-6 w-6"
+    >
+      <path
+        d="M4 7.5C4 6.12 5.12 5 6.5 5H19C19.55 5 20 5.45 20 6V18C20 18.55 19.55 19 19 19H6.5C5.12 19 4 17.88 4 16.5V7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 8H18.5C19.33 8 20 8.67 20 9.5V14.5C20 15.33 19.33 16 18.5 16H16C14.34 16 13 14.66 13 13C13 11.34 14.34 10 16 10H20"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="16"
+        cy="13"
+        r="0.8"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function ArrowIcon() {
   return (
     <svg
@@ -179,6 +210,9 @@ export default function ProfilePage() {
   const [userName, setUserName] =
     useState("");
 
+  const [walletBalance, setWalletBalance] =
+    useState(0);
+
   useEffect(() => {
     const token = localStorage.getItem(
       "gaming_account_token"
@@ -197,6 +231,8 @@ export default function ProfilePage() {
         setUserName(
           userData.name || ""
         );
+
+        loadWallet(token);
       } catch {
         localStorage.removeItem(
           "gaming_account_token"
@@ -208,6 +244,49 @@ export default function ProfilePage() {
       }
     }
   }, []);
+
+  async function loadWallet(token: string) {
+    try {
+      const response = await fetch(
+        "/api/wallet",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            action: "get",
+          }),
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (
+        response.ok &&
+        data?.success &&
+        data?.wallet
+      ) {
+        setWalletBalance(
+          Number(data.wallet.balance || 0)
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Wallet loading error:",
+        error
+      );
+    }
+  }
+
+  function formatToman(amount: number) {
+    return new Intl.NumberFormat(
+      "fa-IR"
+    ).format(amount);
+  }
 
   async function handleSubmit(
     e: React.FormEvent
@@ -286,7 +365,10 @@ export default function ProfilePage() {
         setMessage(
           `خوش آمدی ${data.name}`
         );
+
         setPassword("");
+
+        await loadWallet(data.token);
       } else {
         setMessage(
           "ثبت‌نام با موفقیت انجام شد. حالا می‌توانی وارد شوی."
@@ -316,6 +398,7 @@ export default function ProfilePage() {
 
     setIsLoggedIn(false);
     setUserName("");
+    setWalletBalance(0);
     setMessage(
       "از حساب خارج شدی"
     );
@@ -332,6 +415,7 @@ export default function ProfilePage() {
         className="min-h-screen bg-slate-950 px-4 py-8 pb-10 text-white"
       >
         <div className="mx-auto max-w-2xl">
+
           {/* Header */}
           <div className="mb-8 flex items-center justify-between gap-3">
             <button
@@ -398,6 +482,43 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-3">
+
+              {/* Wallet */}
+              <button
+                type="button"
+                onClick={() =>
+                  goTo("/profile/wallet")
+                }
+                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
+                  <WalletIcon />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-black">
+                    کیف پول
+                  </h3>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    موجودی کیف پول
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="text-sm font-black text-white">
+                    {formatToman(walletBalance)}
+                    <span className="mr-1 text-xs font-normal text-slate-500">
+                      تومان
+                    </span>
+                  </div>
+
+                  <div className="text-slate-500 transition group-hover:text-white">
+                    <ArrowIcon />
+                  </div>
+                </div>
+              </button>
+
               {/* Account information */}
               <button
                 type="button"
@@ -484,6 +605,7 @@ export default function ProfilePage() {
                   <ArrowIcon />
                 </div>
               </button>
+
             </div>
           </section>
 
@@ -503,6 +625,7 @@ export default function ProfilePage() {
       className="min-h-screen bg-slate-950 px-4 py-8 text-white"
     >
       <div className="mx-auto max-w-md">
+
         <div className="mb-8 text-center">
           <div className="mb-3 flex justify-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-slate-950">
@@ -524,6 +647,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+
           <div className="mb-6 grid grid-cols-2 rounded-2xl bg-slate-800 p-1">
             <button
               type="button"
@@ -725,6 +849,7 @@ export default function ProfilePage() {
         >
           ← بازگشت به فروشگاه
         </button>
+
       </div>
     </main>
   );
