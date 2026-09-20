@@ -202,6 +202,46 @@ function TransactionIcon() {
   );
 }
 
+function SupportIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-6 w-6"
+    >
+      <path
+        d="M4.5 13.5V11.5C4.5 7.36 7.86 4 12 4C16.14 4 19.5 7.36 19.5 11.5V13.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4.5 13.5H3.5C2.95 13.5 2.5 13.95 2.5 14.5V17C2.5 17.55 2.95 18 3.5 18H4.5C5.05 18 5.5 17.55 5.5 17V14.5C5.5 13.95 5.05 13.5 4.5 13.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M19.5 13.5H20.5C21.05 13.5 21.5 13.95 21.5 14.5V17C21.5 17.55 21.05 18 20.5 18H19.5C18.95 18 18.5 17.55 18.5 17V14.5C18.5 13.95 18.95 13.5 19.5 13.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M18.5 18C18.5 19.66 17.16 21 15.5 21H13.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <circle
+        cx="12.5"
+        cy="21"
+        r="1"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function ArrowIcon() {
   return (
     <svg
@@ -687,6 +727,33 @@ export default function ProfilePage() {
 
                   <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
                     نام، شماره موبایل و کارت‌های بانکی
+                  </p>
+                </div>
+
+                <div className="text-slate-600 transition group-hover:translate-x-[-2px] group-hover:text-slate-300">
+                  <ArrowIcon />
+                </div>
+              </button>
+
+              {/* 6 - Support and Education */}
+              <button
+                type="button"
+                onClick={() =>
+                  goTo("/support")
+                }
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition duration-200 hover:border-white/15 hover:bg-slate-800/90 active:scale-[0.99]"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
+                  <SupportIcon />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-black">
+                    پشتیبانی و آموزش
+                  </h3>
+
+                  <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
+                    راهنمای استفاده و ارتباط با پشتیبانی
                   </p>
                 </div>
 
