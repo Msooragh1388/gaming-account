@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -163,17 +162,48 @@ function formatToman(value: number) {
   return new Intl.NumberFormat("fa-IR").format(value);
 }
 
+/*
+ * فقط عدد خالص را برمی‌گرداند.
+ * نمایش ۴تایی در کامپوننت CardNumber انجام می‌شود
+ * تا در RTL/LTR ترتیب شماره به‌هم نریزد.
+ */
 function formatCardNumber(cardNumber: string) {
-  const clean = cardNumber.replace(/\D/g, "").slice(0, 16);
+  return cardNumber.replace(/\D/g, "").slice(0, 16);
+}
 
-  if (clean.length !== 16) {
-    return cardNumber;
-  }
+/*
+ * نمایش مطمئن شماره کارت به صورت:
+ * 6219 8618 5814 8041
+ */
+function CardNumber({
+  cardNumber,
+  large = false,
+}: {
+  cardNumber: string;
+  large?: boolean;
+}) {
+  const clean = formatCardNumber(cardNumber);
+  const groups = clean.match(/.{1,4}/g) ?? [];
 
-  return `${clean.slice(0, 4)} ${clean.slice(4, 8)} ${clean.slice(
-    8,
-    12
-  )} ${clean.slice(12, 16)}`;
+  return (
+    <div
+      dir="ltr"
+      className={`flex min-w-0 items-center justify-center overflow-hidden font-mono font-black text-white ${
+        large
+          ? "gap-1 text-[14px] sm:gap-1.5 sm:text-xl"
+          : "justify-start gap-1 text-[11px] font-semibold sm:gap-1.5 sm:text-sm"
+      }`}
+    >
+      {groups.map((group, index) => (
+        <span
+          key={`${group}-${index}`}
+          className="shrink-0 whitespace-nowrap"
+        >
+          {group}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function normalizeNumber(value: string) {
@@ -666,11 +696,9 @@ export default function WalletPage() {
                                   {card.ownerName || "کارت بانکی"}
                                 </div>
 
-                                <div className="overflow-hidden font-mono text-[11px] font-semibold tracking-normal text-white sm:text-sm">
-                                  <span className="block whitespace-nowrap">
-                                    {formatCardNumber(card.cardNumber)}
-                                  </span>
-                                </div>
+                                <CardNumber
+                                  cardNumber={card.cardNumber}
+                                />
                               </div>
 
                               <div
@@ -807,15 +835,14 @@ export default function WalletPage() {
                   </div>
 
                   <div className="p-5">
-                    <div className="mb-3 overflow-hidden text-center font-mono text-[14px] font-black tracking-normal text-white sm:text-xl">
-                      <span className="whitespace-nowrap">
-                        {formatCardNumber(DEPOSIT_CARD_NUMBER)}
-                      </span>
-                    </div>
+                    <CardNumber
+                      cardNumber={DEPOSIT_CARD_NUMBER}
+                      large
+                    />
 
                     <button
                       onClick={copyCardNumber}
-                      className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] text-xs font-semibold text-slate-300 transition hover:bg-white/[0.1] hover:text-white active:scale-[0.98]"
+                      className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] text-xs font-semibold text-slate-300 transition hover:bg-white/[0.1] hover:text-white active:scale-[0.98]"
                     >
                       <CopyIcon size={17} />
                       کپی شماره کارت
@@ -933,11 +960,9 @@ export default function WalletPage() {
                             {card.ownerName || "کارت بانکی"}
                           </div>
 
-                          <div className="overflow-hidden font-mono text-[11px] font-semibold tracking-normal text-white sm:text-sm">
-                            <span className="block whitespace-nowrap">
-                              {formatCardNumber(card.cardNumber)}
-                            </span>
-                          </div>
+                          <CardNumber
+                            cardNumber={card.cardNumber}
+                          />
                         </div>
 
                         <div
@@ -1023,4 +1048,3 @@ export default function WalletPage() {
     </main>
   );
 }
-
