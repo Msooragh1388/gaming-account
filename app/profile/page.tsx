@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -192,7 +193,7 @@ function TransactionIcon() {
         strokeLinecap="round"
       />
       <path
-        d="M8 14L5 17L8 20"
+        d="M8 14L5 17L5 17L8 20"
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
@@ -222,34 +223,24 @@ function ArrowIcon() {
 }
 
 export default function ProfilePage() {
-  const [mode, setMode] =
-    useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>("login");
 
   const [name, setName] = useState("");
-  const [identifier, setIdentifier] =
-    useState("");
-  const [password, setPassword] =
-    useState("");
-  const [repeatPassword, setRepeatPassword] =
-    useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showRepeatPassword, setShowRepeatPassword] =
     useState(false);
 
-  const [loading, setLoading] =
-    useState(false);
-  const [message, setMessage] =
-    useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const [isLoggedIn, setIsLoggedIn] =
-    useState(false);
-  const [userName, setUserName] =
-    useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
 
-  const [walletBalance, setWalletBalance] =
-    useState(0);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem(
@@ -262,13 +253,10 @@ export default function ProfilePage() {
 
     if (token && user) {
       try {
-        const userData =
-          JSON.parse(user);
+        const userData = JSON.parse(user);
 
         setIsLoggedIn(true);
-        setUserName(
-          userData.name || ""
-        );
+        setUserName(userData.name || "");
 
         loadWallet(token);
       } catch {
@@ -285,23 +273,18 @@ export default function ProfilePage() {
 
   async function loadWallet(token: string) {
     try {
-      const response = await fetch(
-        "/api/wallet",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            token,
-            action: "get",
-          }),
-        }
-      );
+      const response = await fetch("/api/wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          action: "get",
+        }),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (
         response.ok &&
@@ -321,9 +304,9 @@ export default function ProfilePage() {
   }
 
   function formatToman(amount: number) {
-    return new Intl.NumberFormat(
-      "fa-IR"
-    ).format(amount);
+    return new Intl.NumberFormat("fa-IR").format(
+      amount
+    );
   }
 
   async function handleSubmit(
@@ -352,8 +335,7 @@ export default function ProfilePage() {
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(
             mode === "register"
@@ -370,16 +352,11 @@ export default function ProfilePage() {
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      if (!response.ok || !data.success) {
         setMessage(
-          data.error ||
-            "عملیات ناموفق بود."
+          data.error || "عملیات ناموفق بود."
         );
         return;
       }
@@ -400,9 +377,7 @@ export default function ProfilePage() {
 
         setIsLoggedIn(true);
         setUserName(data.name);
-        setMessage(
-          `خوش آمدی ${data.name}`
-        );
+        setMessage(`خوش آمدی ${data.name}`);
 
         setPassword("");
 
@@ -437,9 +412,7 @@ export default function ProfilePage() {
     setIsLoggedIn(false);
     setUserName("");
     setWalletBalance(0);
-    setMessage(
-      "از حساب خارج شدی"
-    );
+    setMessage("از حساب خارج شدی");
   }
 
   function goTo(path: string) {
@@ -450,17 +423,15 @@ export default function ProfilePage() {
     return (
       <main
         dir="rtl"
-        className="min-h-screen bg-slate-950 px-4 py-8 pb-10 text-white"
+        className="min-h-screen bg-slate-950 px-4 pb-32 pt-8 text-white"
       >
         <div className="mx-auto max-w-2xl">
 
           {/* Header */}
-          <div className="mb-8 flex items-center justify-between gap-3">
+          <div className="mb-7 flex items-center justify-between gap-3">
             <button
-              onClick={() =>
-                goTo("/")
-              }
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg transition hover:bg-white/10"
+              onClick={() => goTo("/")}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/5 bg-white/[0.04] text-lg text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
               aria-label="بازگشت"
             >
               →
@@ -468,12 +439,12 @@ export default function ProfilePage() {
 
             <div className="text-center">
               <div className="flex justify-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-950">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white shadow-lg">
                   <UserInfoIcon />
                 </div>
               </div>
 
-              <h1 className="mt-3 text-xl font-black">
+              <h1 className="mt-2 text-lg font-black tracking-tight">
                 پروفایل
               </h1>
             </div>
@@ -482,56 +453,60 @@ export default function ProfilePage() {
           </div>
 
           {/* User card */}
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-xl">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
-                <UserInfoIcon />
+          <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 shadow-xl">
+            <div className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.07] text-white">
+                  <UserInfoIcon />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium text-slate-500">
+                    خوش آمدید
+                  </p>
+
+                  <h2 className="mt-1 truncate text-lg font-black text-white">
+                    {userName}
+                  </h2>
+
+                  <p className="mt-1 text-[11px] text-slate-600">
+                    حساب کاربری شما
+                  </p>
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <p className="text-xs text-slate-500">
-                  خوش آمدی
-                </p>
-
-                <h2 className="mt-1 truncate text-xl font-black">
-                  {userName}
-                </h2>
-              </div>
+              <button
+                onClick={logout}
+                className="mt-4 flex w-full items-center justify-center rounded-xl border border-red-500/10 bg-red-500/[0.06] py-2.5 text-xs font-bold text-red-300/90 transition hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-200"
+              >
+                خروج از حساب کاربری
+              </button>
             </div>
-
-            <button
-              onClick={logout}
-              className="mt-5 w-full rounded-xl border border-red-500/20 bg-red-500/10 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
-            >
-              خروج از حساب
-            </button>
           </div>
 
           {/* Menu */}
-          <section className="mt-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-black">
+          <section className="mt-7">
+            <div className="mb-4 px-1">
+              <h2 className="text-lg font-black">
                 حساب کاربری
               </h2>
 
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-[11px] text-slate-500">
                 بخش موردنظر خودت را انتخاب کن
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
 
               {/* Account information */}
               <button
                 type="button"
                 onClick={() =>
-                  goTo(
-                    "/profile/account"
-                  )
+                  goTo("/profile/account")
                 }
-                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition duration-200 hover:border-white/15 hover:bg-slate-800/90 active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
                   <UserInfoIcon />
                 </div>
 
@@ -545,7 +520,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
-                <div className="text-slate-500 transition group-hover:text-white">
+                <div className="text-slate-600 transition group-hover:translate-x-[-2px] group-hover:text-slate-300">
                   <ArrowIcon />
                 </div>
               </button>
@@ -554,13 +529,11 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() =>
-                  goTo(
-                    "/profile/saved"
-                  )
+                  goTo("/profile/saved")
                 }
-                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition duration-200 hover:border-white/15 hover:bg-slate-800/90 active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
                   <BookmarkIcon />
                 </div>
 
@@ -574,7 +547,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
-                <div className="text-slate-500 transition group-hover:text-white">
+                <div className="text-slate-600 transition group-hover:translate-x-[-2px] group-hover:text-slate-300">
                   <ArrowIcon />
                 </div>
               </button>
@@ -583,13 +556,11 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() =>
-                  goTo(
-                    "/profile/purchases"
-                  )
+                  goTo("/profile/purchases")
                 }
-                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition duration-200 hover:border-white/15 hover:bg-slate-800/90 active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
                   <CartIcon />
                 </div>
 
@@ -603,7 +574,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
-                <div className="text-slate-500 transition group-hover:text-white">
+                <div className="text-slate-600 transition group-hover:translate-x-[-2px] group-hover:text-slate-300">
                   <ArrowIcon />
                 </div>
               </button>
@@ -614,9 +585,9 @@ export default function ProfilePage() {
                 onClick={() =>
                   goTo("/profile/wallet")
                 }
-                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition duration-200 hover:border-white/15 hover:bg-slate-800/90 active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
                   <WalletIcon />
                 </div>
 
@@ -632,15 +603,13 @@ export default function ProfilePage() {
 
                 <div className="flex shrink-0 items-center gap-2">
                   <div className="text-xs font-black text-white">
-                    {formatToman(
-                      walletBalance
-                    )}
+                    {formatToman(walletBalance)}
                     <span className="mr-1 text-[10px] font-normal text-slate-500">
                       تومان
                     </span>
                   </div>
 
-                  <div className="text-slate-500 transition group-hover:text-white">
+                  <div className="text-slate-600 transition group-hover:translate-x-[-2px] group-hover:text-slate-300">
                     <ArrowIcon />
                   </div>
                 </div>
@@ -650,13 +619,11 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() =>
-                  goTo(
-                    "/profile/transactions"
-                  )
+                  goTo("/profile/transactions")
                 }
-                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition duration-200 hover:border-white/15 hover:bg-slate-800/90 active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
                   <TransactionIcon />
                 </div>
 
@@ -670,7 +637,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
-                <div className="text-slate-500 transition group-hover:text-white">
+                <div className="text-slate-600 transition group-hover:translate-x-[-2px] group-hover:text-slate-300">
                   <ArrowIcon />
                 </div>
               </button>
@@ -679,7 +646,7 @@ export default function ProfilePage() {
           </section>
 
           {message && (
-            <div className="fixed bottom-6 left-1/2 z-[300] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white shadow-2xl">
+            <div className="fixed bottom-6 left-1/2 z-[300] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-3 text-center text-sm font-medium text-white shadow-2xl backdrop-blur">
               {message}
             </div>
           )}
@@ -763,9 +730,7 @@ export default function ProfilePage() {
                   type="text"
                   value={name}
                   onChange={(e) =>
-                    setName(
-                      e.target.value
-                    )
+                    setName(e.target.value)
                   }
                   placeholder="مثلاً محمد سراغی"
                   className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
@@ -782,9 +747,7 @@ export default function ProfilePage() {
                 type="text"
                 value={identifier}
                 onChange={(e) =>
-                  setIdentifier(
-                    e.target.value
-                  )
+                  setIdentifier(e.target.value)
                 }
                 placeholder="ایمیل یا شماره موبایل"
                 dir="ltr"
@@ -806,9 +769,7 @@ export default function ProfilePage() {
                   }
                   value={password}
                   onChange={(e) =>
-                    setPassword(
-                      e.target.value
-                    )
+                    setPassword(e.target.value)
                   }
                   placeholder="حداقل ۶ کاراکتر"
                   dir="ltr"
@@ -819,8 +780,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() =>
                     setShowPassword(
-                      (current) =>
-                        !current
+                      (current) => !current
                     )
                   }
                   className="absolute left-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-slate-400 transition hover:text-white"
@@ -831,9 +791,7 @@ export default function ProfilePage() {
                   }
                 >
                   <EyeIcon
-                    visible={
-                      showPassword
-                    }
+                    visible={showPassword}
                   />
                 </button>
               </div>
@@ -852,9 +810,7 @@ export default function ProfilePage() {
                         ? "text"
                         : "password"
                     }
-                    value={
-                      repeatPassword
-                    }
+                    value={repeatPassword}
                     onChange={(e) =>
                       setRepeatPassword(
                         e.target.value
@@ -869,8 +825,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() =>
                       setShowRepeatPassword(
-                        (current) =>
-                          !current
+                        (current) => !current
                       )
                     }
                     className="absolute left-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-slate-400 transition hover:text-white"
@@ -911,9 +866,7 @@ export default function ProfilePage() {
         </div>
 
         <button
-          onClick={() =>
-            goTo("/")
-          }
+          onClick={() => goTo("/")}
           className="mt-5 w-full text-center text-sm text-slate-500 transition hover:text-white"
         >
           ← بازگشت به فروشگاه
