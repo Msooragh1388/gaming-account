@@ -34,6 +34,10 @@ type Product = {
   updatedAt: string;
 };
 
+type Purchase = {
+  id: number;
+};
+
 function formatPrice(amount: number) {
   return new Intl.NumberFormat("fa-IR").format(amount);
 }
@@ -127,7 +131,6 @@ export default function AdminPage() {
       );
     } catch (error) {
       console.error("loadGames error:", error);
-
       setErrorMessage("خطا در دریافت بازی‌ها.");
     } finally {
       setLoadingGames(false);
@@ -162,7 +165,6 @@ export default function AdminPage() {
       );
     } catch (error) {
       console.error("loadProducts error:", error);
-
       setErrorMessage("خطا در دریافت اکانت‌ها.");
     } finally {
       setLoadingProducts(false);
@@ -175,32 +177,17 @@ export default function AdminPage() {
 
   async function loadBuyersCount() {
     try {
-      const response = await fetch(
-        "/api/admin/get-purchases",
-        {
-          cache: "no-store",
-        }
+      const { data, error } = await supabase.rpc(
+        "get_admin_purchases"
       );
 
-      if (!response.ok) {
-        throw new Error(
-          "خطا در دریافت خریداران."
-        );
+      if (error) {
+        throw error;
       }
 
-      const result = await response.json();
-
-      let list: unknown[] = [];
-
-      if (Array.isArray(result)) {
-        list = result;
-      } else if (Array.isArray(result?.purchases)) {
-        list = result.purchases;
-      } else if (Array.isArray(result?.data)) {
-        list = result.data;
-      } else if (Array.isArray(result?.orders)) {
-        list = result.orders;
-      }
+      const list: Purchase[] = Array.isArray(data)
+        ? (data as Purchase[])
+        : [];
 
       setBuyersCount(list.length);
     } catch (error) {
@@ -245,9 +232,13 @@ export default function AdminPage() {
 
       if (Array.isArray(result)) {
         list = result;
-      } else if (Array.isArray(result?.transactions)) {
+      } else if (
+        Array.isArray(result?.transactions)
+      ) {
         list = result.transactions;
-      } else if (Array.isArray(result?.data)) {
+      } else if (
+        Array.isArray(result?.data)
+      ) {
         list = result.data;
       }
 
@@ -892,12 +883,6 @@ export default function AdminPage() {
       setMessage("");
       setErrorMessage("");
 
-      /*
-       * مهم:
-       * حذف دیگر مستقیم از Product انجام نمی‌شود.
-       * از RPC مخصوص پروژه استفاده می‌کنیم.
-       */
-
       const { data, error } =
         await supabase.rpc(
           "delete_product_account",
@@ -909,10 +894,6 @@ export default function AdminPage() {
       if (error) {
         throw error;
       }
-
-      /*
-       * بعضی RPCها نتیجه success/error برمی‌گردانند.
-       */
 
       if (
         data &&
@@ -972,7 +953,7 @@ export default function AdminPage() {
       }
 
       // =====================================
-      // RELOAD FROM DATABASE
+      // RELOAD
       // =====================================
 
       await loadProducts();
@@ -1903,3 +1884,4 @@ export default function AdminPage() {
     </main>
   );
 }
+
