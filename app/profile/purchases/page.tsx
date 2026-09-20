@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Purchase = {
   id: number;
@@ -13,6 +15,20 @@ type Purchase = {
   backupPassword2: string | null;
   price: number;
   createdAt: string;
+};
+
+type Product = {
+  id: number;
+  game: string;
+  title: string;
+  description: string | null;
+  price: number;
+  images: string[] | null;
+  videoUrl: string | null;
+  isSold: boolean;
+  likes: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 function CartIcon() {
@@ -135,6 +151,54 @@ function ArrowIcon() {
   );
 }
 
+function HeartIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M20.84 8.61C20.84 5.95 18.69 4 16.05 4C14.48 4 13.07 4.76 12 5.95C10.93 4.76 9.52 4 7.95 4C5.31 4 3.16 5.95 3.16 8.61C3.16 12.02 6.27 14.83 12 20C17.73 14.83 20.84 12.02 20.84 8.61Z"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M6 4.75C6 3.78 6.78 3 7.75 3H16.25C17.22 3 18 3.78 18 4.75V21L12 17.5L6 21V4.75Z"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+type MediaItem =
+  | {
+      type: "image";
+      url: string;
+    }
+  | {
+      type: "video";
+      url: string;
+    };
+
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [visiblePasswords, setVisiblePasswords] =
@@ -143,8 +207,21 @@ export default function PurchasesPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const [selectedProduct, setSelectedProduct] =
+    useState<Product | null>(null);
+
+  const [selectedMedia, setSelectedMedia] = useState(0);
+  const [loadingProduct, setLoadingProduct] = useState(false);
+
+  const [liked, setLiked] = useState<Record<number, boolean>>({});
+  const [liking, setLiking] = useState(false);
+
+  const [savedIds, setSavedIds] = useState<number[]>([]);
+
   useEffect(() => {
     loadPurchases();
+    loadUserLikes();
+    loadSavedProducts();
   }, []);
 
   async function loadPurchases() {
@@ -199,6 +276,228 @@ export default function PurchasesPage() {
     }
   }
 
+  async function loadUserLikes() {
+    const token = localStorage.getItem(
+      "gaming_account_token"
+    );
+
+    if (!token) return;
+
+    try {
+      const response = await fetch("/api/likes/list", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+        }),
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      const ids: number[] = Array.isArray(data)
+        ? data
+            .map((item: unknown) => {
+              if (typeof item === "number") return item;
+
+              if (
+                typeof item === "object" &&
+                item !== null &&
+                "productId" in item
+              ) {
+                return Number(
+                  (item as { productId: unknown }).productId
+                );
+              }
+
+              return NaN;
+            })
+            .filter((id: number) => Number.isFinite(id))
+        : Array.isArray(data?.productIds)
+        ? data.productIds
+            .map((id: unknown) => Number(id))
+            .filter((id: number) => Number.isFinite(id))
+        : [];
+
+      const likeMap: Record<number, boolean> = {};
+
+      ids.forEach((id) => {
+        likeMap[id] = true;
+      });
+
+      setLiked(likeMap);
+    } catch (err) {
+      console.error("loadUserLikes error:", err);
+    }
+  }
+
+  function loadSavedProducts() {
+    try {
+      const raw = localStorage.getItem(
+        "gaming_account_saved"
+      );
+
+      if (!raw) {
+        setSavedIds([]);
+        return;
+      }
+
+      const parsed = JSON.parse(raw);
+
+      if (!Array.isArray(parsed)) {
+        setSavedIds([]);
+        return;
+      }
+
+      const ids = parsed
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id));
+
+      setSavedIds(ids);
+    } catch (err) {
+      console.error("loadSavedProducts error:", err);
+      setSavedIds([]);
+    }
+  }
+
+  async function toggleLike(productId: number) {
+    if (liking) return;
+
+    const token = localStorage.getItem(
+      "gaming_account_token"
+    );
+
+    if (!token) {
+      window.location.href = "/profile";
+      return;
+    }
+
+    setLiking(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/likes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          productId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "تغییر وضعیت لایک انجام نشد."
+        );
+      }
+
+      const isLiked =
+        typeof data?.liked === "boolean"
+          ? data.liked
+          : !Boolean(liked[productId]);
+
+      const likes =
+        typeof data?.likes === "number"
+          ? data.likes
+          : selectedProduct?.id === productId
+          ? selectedProduct.likes +
+            (isLiked ? 1 : -1)
+          : undefined;
+
+      setLiked((current) => ({
+        ...current,
+        [productId]: isLiked,
+      }));
+
+      if (selectedProduct?.id === productId) {
+        setSelectedProduct((current) =>
+          current
+            ? {
+                ...current,
+                likes:
+                  typeof likes === "number"
+                    ? Math.max(0, likes)
+                    : current.likes,
+              }
+            : current
+        );
+      }
+
+      if (isLiked) {
+        setMessage("اکانت به علاقه‌مندی‌ها اضافه شد.");
+      } else {
+        setMessage("لایک اکانت برداشته شد.");
+      }
+
+      setTimeout(() => {
+        setMessage("");
+      }, 1800);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "تغییر وضعیت لایک انجام نشد."
+      );
+    } finally {
+      setLiking(false);
+    }
+  }
+
+  function toggleSave(productId: number) {
+    try {
+      const raw = localStorage.getItem(
+        "gaming_account_saved"
+      );
+
+      let ids: number[] = [];
+
+      if (raw) {
+        const parsed = JSON.parse(raw);
+
+        if (Array.isArray(parsed)) {
+          ids = parsed
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id));
+        }
+      }
+
+      const alreadySaved = ids.includes(productId);
+
+      const nextIds = alreadySaved
+        ? ids.filter((id) => id !== productId)
+        : [...ids, productId];
+
+      localStorage.setItem(
+        "gaming_account_saved",
+        JSON.stringify(nextIds)
+      );
+
+      setSavedIds(nextIds);
+
+      setMessage(
+        alreadySaved
+          ? "اکانت از ذخیره‌شده‌ها حذف شد."
+          : "اکانت ذخیره شد."
+      );
+
+      setTimeout(() => {
+        setMessage("");
+      }, 1800);
+    } catch (err) {
+      console.error(err);
+      setError("ذخیره اکانت انجام نشد.");
+    }
+  }
+
   function togglePassword(purchaseId: number) {
     setVisiblePasswords((current) => ({
       ...current,
@@ -242,8 +541,47 @@ export default function PurchasesPage() {
     window.location.href = "/profile";
   }
 
-  function openProduct(productId: number) {
-    window.location.href = `/product/${productId}`;
+  async function openProduct(productId: number) {
+    setLoadingProduct(true);
+    setError("");
+    setSelectedMedia(0);
+
+    try {
+      const { data, error: supabaseError } = await supabase
+        .from("ProductPublic")
+        .select(
+          "id, game, title, description, price, images, videoUrl, isSold, likes, createdAt, updatedAt"
+        )
+        .eq("id", productId)
+        .maybeSingle();
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      if (!data) {
+        throw new Error(
+          "اطلاعات این اکانت دیگر در فروشگاه موجود نیست."
+        );
+      }
+
+      setSelectedProduct(data as Product);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "دریافت اطلاعات اکانت ناموفق بود."
+      );
+    } finally {
+      setLoadingProduct(false);
+    }
+  }
+
+  function closeProduct() {
+    setSelectedProduct(null);
+    setSelectedMedia(0);
   }
 
   if (loading) {
@@ -266,6 +604,27 @@ export default function PurchasesPage() {
       </main>
     );
   }
+
+  const mediaItems: MediaItem[] = selectedProduct
+    ? [
+        ...(selectedProduct.images ?? [])
+          .filter(Boolean)
+          .map((url) => ({
+            type: "image" as const,
+            url,
+          })),
+        ...(selectedProduct.videoUrl
+          ? [
+              {
+                type: "video" as const,
+                url: selectedProduct.videoUrl,
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  const currentMedia = mediaItems[selectedMedia];
 
   return (
     <main
@@ -573,10 +932,14 @@ export default function PurchasesPage() {
                         onClick={() =>
                           openProduct(purchase.productId)
                         }
-                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-slate-800/70 py-3 text-xs font-bold text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                        disabled={loadingProduct}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-slate-800/70 py-3 text-xs font-bold text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-wait disabled:opacity-50"
                       >
-                        مشاهده صفحه اکانت
-                        <ArrowIcon />
+                        {loadingProduct
+                          ? "در حال دریافت اطلاعات..."
+                          : "مشاهده صفحه اکانت"}
+
+                        {!loadingProduct && <ArrowIcon />}
                       </button>
                     </div>
                   </article>
@@ -595,6 +958,205 @@ export default function PurchasesPage() {
           <span>→</span>
           بازگشت به پروفایل
         </button>
+
+        {/* Product Modal */}
+        {selectedProduct && (
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            onClick={closeProduct}
+          >
+            <div
+              dir="rtl"
+              className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/[0.08] bg-slate-900 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] p-4">
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-base font-black">
+                    {selectedProduct.title}
+                  </h2>
+
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {selectedProduct.game}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  {/* Like */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleLike(selectedProduct.id)
+                    }
+                    disabled={liking}
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
+                      liked[selectedProduct.id]
+                        ? "bg-red-500/10 text-red-400"
+                        : "bg-white/[0.05] text-slate-400 hover:bg-white/[0.09] hover:text-red-400"
+                    } disabled:cursor-wait disabled:opacity-50`}
+                    aria-label={
+                      liked[selectedProduct.id]
+                        ? "برداشتن لایک"
+                        : "لایک"
+                    }
+                  >
+                    <HeartIcon
+                      filled={Boolean(
+                        liked[selectedProduct.id]
+                      )}
+                    />
+                  </button>
+
+                  {/* Save */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleSave(selectedProduct.id)
+                    }
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
+                      savedIds.includes(selectedProduct.id)
+                        ? "bg-amber-500/10 text-amber-400"
+                        : "bg-white/[0.05] text-slate-400 hover:bg-white/[0.09] hover:text-amber-400"
+                    }`}
+                    aria-label={
+                      savedIds.includes(selectedProduct.id)
+                        ? "حذف از ذخیره‌شده‌ها"
+                        : "ذخیره اکانت"
+                    }
+                  >
+                    <BookmarkIcon
+                      filled={savedIds.includes(
+                        selectedProduct.id
+                      )}
+                    />
+                  </button>
+
+                  {/* Close */}
+                  <button
+                    type="button"
+                    onClick={closeProduct}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] text-slate-400 transition hover:bg-white/[0.09] hover:text-white"
+                    aria-label="بستن"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {/* Gallery */}
+              {mediaItems.length > 0 && (
+                <div className="p-4">
+                  {/* Main media */}
+                  <div className="relative overflow-hidden rounded-2xl bg-slate-800">
+                    {currentMedia?.type === "video" ? (
+                      <video
+                        key={currentMedia.url}
+                        src={currentMedia.url}
+                        controls
+                        playsInline
+                        className="max-h-[360px] w-full bg-black object-contain"
+                      />
+                    ) : currentMedia?.type === "image" ? (
+                      <img
+                        src={currentMedia.url}
+                        alt={selectedProduct.title}
+                        className="max-h-[360px] w-full object-contain"
+                      />
+                    ) : null}
+                  </div>
+
+                  {/* Gallery thumbnails */}
+                  {mediaItems.length > 1 && (
+                    <div className="mt-2 grid grid-cols-4 gap-2">
+                      {mediaItems.map((media, index) => (
+                        <button
+                          key={`${media.type}-${media.url}-${index}`}
+                          type="button"
+                          onClick={() =>
+                            setSelectedMedia(index)
+                          }
+                          className={`relative overflow-hidden rounded-xl border ${
+                            selectedMedia === index
+                              ? "border-white"
+                              : "border-white/[0.06]"
+                          }`}
+                        >
+                          {media.type === "image" ? (
+                            <img
+                              src={media.url}
+                              alt=""
+                              className="h-16 w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-16 w-full items-center justify-center bg-black text-white">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10">
+                                ▶
+                              </div>
+
+                              <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[8px]">
+                                ویدیو
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Product Info */}
+              <div className="px-4 pb-4">
+                <div className="rounded-xl bg-slate-800/60 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] text-slate-500">
+                        قیمت اکانت
+                      </p>
+
+                      <p className="mt-1 text-sm font-black">
+                        {formatPrice(selectedProduct.price)} تومان
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <HeartIcon
+                        filled={Boolean(
+                          liked[selectedProduct.id]
+                        )}
+                      />
+
+                      <span className="text-xs font-bold">
+                        {selectedProduct.likes.toLocaleString(
+                          "fa-IR"
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedProduct.description && (
+                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-slate-800/40 p-4">
+                    <h3 className="text-xs font-black">
+                      توضیحات اکانت
+                    </h3>
+
+                    <p className="mt-2 whitespace-pre-wrap text-xs leading-6 text-slate-400">
+                      {selectedProduct.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-3 rounded-xl border border-emerald-500/10 bg-emerald-500/[0.05] p-3 text-center">
+                  <p className="text-[11px] leading-5 text-emerald-300">
+                    این اکانت قبلاً توسط شما خریداری شده است.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Toast */}
         {message && (
