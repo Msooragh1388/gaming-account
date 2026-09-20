@@ -1770,7 +1770,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="mx-auto max-w-md px-4 py-8">
+          <div className="mx-auto max-w-md px-4 py-32">
             <div className="text-center">
               <div className="text-5xl">💳</div>
 
