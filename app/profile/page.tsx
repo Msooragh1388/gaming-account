@@ -1,42 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 type Mode = "login" | "register";
-
-type Product = {
-  id: number;
-  game: string;
-  title: string;
-  description: string | null;
-  price: number;
-  images: string[] | null;
-  videoUrl: string | null;
-  isSold: boolean;
-  likes: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type Purchase = {
-  id: number;
-  productId: number;
-  productTitle: string;
-  game: string;
-  accountUsername: string;
-  accountPassword: string;
-  backupPassword1: string | null;
-  backupPassword2: string | null;
-  price: number;
-  createdAt: string;
-};
-
-type BankCard = {
-  id: number;
-  cardNumber: string;
-  ownerName: string;
-};
 
 function EyeIcon({ visible }: { visible: boolean }) {
   return (
@@ -93,45 +59,6 @@ function EyeIcon({ visible }: { visible: boolean }) {
   );
 }
 
-function BookmarkIcon({ saved }: { saved: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill={saved ? "currentColor" : "none"}
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-5 w-5"
-    >
-      <path
-        d="M6 4.75C6 3.7835 6.7835 3 7.75 3H16.25C17.2165 3 18 3.7835 18 4.75V21L12 17.5L6 21V4.75Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CartIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-5 w-5"
-    >
-      <path
-        d="M3 4H5L7.2 15.2C7.39 16.17 8.24 16.87 9.23 16.87H17.5C18.4 16.87 19.19 16.27 19.31 15.38L20.5 8H6"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="9.5" cy="20" r="1.3" fill="currentColor" />
-      <circle cx="17.5" cy="20" r="1.3" fill="currentColor" />
-    </svg>
-  );
-}
-
 function UserInfoIcon() {
   return (
     <svg
@@ -157,7 +84,56 @@ function UserInfoIcon() {
   );
 }
 
-function CardIcon() {
+function BookmarkIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-6 w-6"
+    >
+      <path
+        d="M6 4.75C6 3.7835 6.7835 3 7.75 3H16.25C17.2165 3 18 3.7835 18 4.75V21L12 17.5L6 21V4.75Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-6 w-6"
+    >
+      <path
+        d="M3 4H5L7.2 15.2C7.39 16.17 8.24 16.87 9.23 16.87H17.5C18.4 16.87 19.19 16.27 19.31 15.38L20.5 8H6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="9.5"
+        cy="20"
+        r="1.3"
+        fill="currentColor"
+      />
+      <circle
+        cx="17.5"
+        cy="20"
+        r="1.3"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -165,639 +141,73 @@ function CardIcon() {
       xmlns="http://www.w3.org/2000/svg"
       className="h-5 w-5"
     >
-      <rect
-        x="3"
-        y="5"
-        width="18"
-        height="14"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
       <path
-        d="M3 10H21"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M7 15H11"
+        d="M9 5L16 12L9 19"
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
 }
 
 export default function ProfilePage() {
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] =
+    useState<Mode>("login");
 
   const [name, setName] = useState("");
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
+  const [identifier, setIdentifier] =
+    useState("");
+  const [password, setPassword] =
+    useState("");
+  const [repeatPassword, setRepeatPassword] =
+    useState("");
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] =
+    useState(false);
   const [showRepeatPassword, setShowRepeatPassword] =
     useState(false);
 
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
-
-  const [savedProducts, setSavedProducts] = useState<Product[]>(
-    []
-  );
-  const [loadingSaved, setLoadingSaved] = useState(false);
-
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [loadingPurchases, setLoadingPurchases] =
+  const [loading, setLoading] =
     useState(false);
+  const [message, setMessage] =
+    useState("");
 
-  const [visibleCredentials, setVisibleCredentials] =
-    useState<Record<number, boolean>>({});
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [mobile, setMobile] = useState("");
-
-  const [cards, setCards] = useState<BankCard[]>([]);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [cardSaving, setCardSaving] = useState<number | null>(
-    null
-  );
+  const [isLoggedIn, setIsLoggedIn] =
+    useState(false);
+  const [userName, setUserName] =
+    useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("gaming_account_token");
-    const user = localStorage.getItem("gaming_account_user");
+    const token = localStorage.getItem(
+      "gaming_account_token"
+    );
+
+    const user = localStorage.getItem(
+      "gaming_account_user"
+    );
 
     if (token && user) {
       try {
-        const userData = JSON.parse(user);
+        const userData =
+          JSON.parse(user);
 
         setIsLoggedIn(true);
-        setUserName(userData.name || "");
+        setUserName(
+          userData.name || ""
+        );
       } catch {
-        localStorage.removeItem("gaming_account_token");
-        localStorage.removeItem("gaming_account_user");
+        localStorage.removeItem(
+          "gaming_account_token"
+        );
+
+        localStorage.removeItem(
+          "gaming_account_user"
+        );
       }
     }
   }, []);
-
-  useEffect(() => {
-    async function loadProfile() {
-      if (!isLoggedIn) return;
-
-      const token = localStorage.getItem(
-        "gaming_account_token"
-      );
-
-      if (!token) return;
-
-      setProfileLoading(true);
-
-      try {
-        const response = await fetch("/api/profile", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token,
-            action: "get",
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          console.error(
-            "Profile load error:",
-            data.error
-          );
-          return;
-        }
-
-        setFirstName(data.profile?.firstName || "");
-        setLastName(data.profile?.lastName || "");
-        setMobile(data.profile?.mobile || "");
-
-        setCards(
-          Array.isArray(data.cards)
-            ? data.cards.map((card: any) => ({
-                id: Number(card.id),
-                cardNumber: String(
-                  card.cardNumber || ""
-                ),
-                ownerName: String(
-                  card.ownerName || ""
-                ),
-              }))
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "Profile request error:",
-          error
-        );
-      } finally {
-        setProfileLoading(false);
-      }
-    }
-
-    loadProfile();
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    async function loadSavedProducts() {
-      const saved = localStorage.getItem(
-        "gaming_account_saved"
-      );
-
-      if (!saved) {
-        setSavedProducts([]);
-        return;
-      }
-
-      let savedIds: number[] = [];
-
-      try {
-        const parsed = JSON.parse(saved);
-
-        if (Array.isArray(parsed)) {
-          savedIds = parsed.map((id: unknown) =>
-            Number(id)
-          );
-        }
-      } catch {
-        savedIds = [];
-      }
-
-      if (savedIds.length === 0) {
-        setSavedProducts([]);
-        return;
-      }
-
-      setLoadingSaved(true);
-
-      const { data, error } = await supabase
-        .from("ProductPublic")
-        .select("*")
-        .in("id", savedIds);
-
-      if (error) {
-        console.error(
-          "Saved products error:",
-          error
-        );
-        setLoadingSaved(false);
-        return;
-      }
-
-      const sortedProducts = (data || []).sort(
-        (a, b) =>
-          savedIds.indexOf(Number(a.id)) -
-          savedIds.indexOf(Number(b.id))
-      );
-
-      setSavedProducts(
-        sortedProducts as Product[]
-      );
-
-      setLoadingSaved(false);
-    }
-
-    loadSavedProducts();
-  }, []);
-
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setPurchases([]);
-      return;
-    }
-
-    async function loadPurchases() {
-      const token = localStorage.getItem(
-        "gaming_account_token"
-      );
-
-      if (!token) {
-        setPurchases([]);
-        return;
-      }
-
-      setLoadingPurchases(true);
-
-      try {
-        const response = await fetch(
-          "/api/purchases",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ token }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          console.error(
-            "Purchases error:",
-            data.error
-          );
-          setPurchases([]);
-          return;
-        }
-
-        setPurchases(
-          Array.isArray(data.purchases)
-            ? data.purchases
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "Purchases request error:",
-          error
-        );
-
-        setPurchases([]);
-      } finally {
-        setLoadingPurchases(false);
-      }
-    }
-
-    loadPurchases();
-  }, [isLoggedIn]);
-
-  function removeSaved(id: number) {
-    const saved = localStorage.getItem(
-      "gaming_account_saved"
-    );
-
-    let savedIds: number[] = [];
-
-    try {
-      savedIds = saved
-        ? JSON.parse(saved).map((item: unknown) =>
-            Number(item)
-          )
-        : [];
-    } catch {
-      savedIds = [];
-    }
-
-    const newSavedIds = savedIds.filter(
-      (item) => item !== id
-    );
-
-    localStorage.setItem(
-      "gaming_account_saved",
-      JSON.stringify(newSavedIds)
-    );
-
-    setSavedProducts((current) =>
-      current.filter(
-        (product) => product.id !== id
-      )
-    );
-
-    setMessage(
-      "اکانت از ذخیره‌شده‌ها حذف شد"
-    );
-  }
-
-  function toggleCredentials(
-    purchaseId: number
-  ) {
-    setVisibleCredentials((current) => ({
-      ...current,
-      [purchaseId]: !current[purchaseId],
-    }));
-  }
-
-  function formatPrice(price: number) {
-    return new Intl.NumberFormat(
-      "fa-IR"
-    ).format(price);
-  }
-
-  function formatDate(date: string) {
-    try {
-      return new Intl.DateTimeFormat(
-        "fa-IR",
-        {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }
-      ).format(new Date(date));
-    } catch {
-      return "";
-    }
-  }
-
-  function formatCardNumber(
-    cardNumber: string
-  ) {
-    const clean = cardNumber.replace(
-      /\s/g,
-      ""
-    );
-
-    if (clean.length !== 16) {
-      return cardNumber;
-    }
-
-    return `${clean.slice(0, 4)} **** **** ${clean.slice(
-      12
-    )}`;
-  }
-
-  function addCard() {
-    setCards((current) => [
-      ...current,
-      {
-        id: -Date.now(),
-        cardNumber: "",
-        ownerName: "",
-      },
-    ]);
-  }
-
-  function updateCard(
-    id: number,
-    field:
-      | "cardNumber"
-      | "ownerName",
-    value: string
-  ) {
-    setCards((current) =>
-      current.map((card) =>
-        card.id === id
-          ? {
-              ...card,
-              [field]: value,
-            }
-          : card
-      )
-    );
-  }
-
-  async function deleteCard(
-    card: BankCard
-  ) {
-    const isNewCard = card.id < 0;
-
-    if (isNewCard) {
-      setCards((current) =>
-        current.filter(
-          (item) => item.id !== card.id
-        )
-      );
-      return;
-    }
-
-    const token = localStorage.getItem(
-      "gaming_account_token"
-    );
-
-    if (!token) {
-      setMessage(
-        "نشست کاربر معتبر نیست. دوباره وارد شو."
-      );
-      return;
-    }
-
-    setCardSaving(card.id);
-    setMessage("");
-
-    try {
-      const response = await fetch(
-        "/api/profile",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token,
-            action: "delete_card",
-            cardId: card.id,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setMessage(
-          data.error ||
-            "حذف کارت ناموفق بود."
-        );
-        return;
-      }
-
-      setCards((current) =>
-        current.filter(
-          (item) => item.id !== card.id
-        )
-      );
-
-      setMessage(
-        "شماره کارت با موفقیت حذف شد."
-      );
-    } catch (error) {
-      console.error(
-        "Delete card error:",
-        error
-      );
-
-      setMessage(
-        "خطایی در حذف کارت رخ داد."
-      );
-    } finally {
-      setCardSaving(null);
-    }
-  }
-
-  async function saveProfile() {
-    setMessage("");
-
-    if (!firstName.trim()) {
-      setMessage("نام را وارد کن.");
-      return;
-    }
-
-    if (!lastName.trim()) {
-      setMessage(
-        "نام خانوادگی را وارد کن."
-      );
-      return;
-    }
-
-    if (!mobile.trim()) {
-      setMessage(
-        "شماره موبایل را وارد کن."
-      );
-      return;
-    }
-
-    const token = localStorage.getItem(
-      "gaming_account_token"
-    );
-
-    if (!token) {
-      setMessage(
-        "نشست کاربر معتبر نیست. دوباره وارد شو."
-      );
-      return;
-    }
-
-    setProfileSaving(true);
-
-    try {
-      const response = await fetch(
-        "/api/profile",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token,
-            action: "save_profile",
-            firstName,
-            lastName,
-            mobile,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setMessage(
-          data.error ||
-            "ذخیره اطلاعات ناموفق بود."
-        );
-        return;
-      }
-
-      setMessage(
-        "اطلاعات حساب با موفقیت ذخیره شد."
-      );
-    } catch (error) {
-      console.error(
-        "Save profile error:",
-        error
-      );
-
-      setMessage(
-        "خطایی در ارتباط با سرور رخ داد."
-      );
-    } finally {
-      setProfileSaving(false);
-    }
-  }
-
-  async function saveCard(
-    card: BankCard
-  ) {
-    const cardNumber = card.cardNumber
-      .replace(/\s/g, "")
-      .trim();
-
-    const ownerName =
-      card.ownerName.trim();
-
-    if (!/^\d{16}$/.test(cardNumber)) {
-      setMessage(
-        "شماره کارت باید دقیقاً ۱۶ رقم باشد."
-      );
-      return;
-    }
-
-    if (!ownerName) {
-      setMessage(
-        "نام مالک کارت را وارد کن."
-      );
-      return;
-    }
-
-    const token = localStorage.getItem(
-      "gaming_account_token"
-    );
-
-    if (!token) {
-      setMessage(
-        "نشست کاربر معتبر نیست. دوباره وارد شو."
-      );
-      return;
-    }
-
-    setCardSaving(card.id);
-    setMessage("");
-
-    try {
-      const response = await fetch(
-        "/api/profile",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token,
-            action: "add_card",
-            cardNumber,
-            ownerName,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setMessage(
-          data.error ||
-            "ثبت کارت ناموفق بود."
-        );
-        return;
-      }
-
-      setCards((current) =>
-        current.map((item) =>
-          item.id === card.id
-            ? {
-                id: Number(data.cardId),
-                cardNumber,
-                ownerName,
-              }
-            : item
-        )
-      );
-
-      setMessage(
-        "شماره کارت با موفقیت ثبت شد."
-      );
-    } catch (error) {
-      console.error(
-        "Save card error:",
-        error
-      );
-
-      setMessage(
-        "خطایی در ثبت کارت رخ داد."
-      );
-    } finally {
-      setCardSaving(null);
-    }
-  }
 
   async function handleSubmit(
     e: React.FormEvent
@@ -906,14 +316,13 @@ export default function ProfilePage() {
 
     setIsLoggedIn(false);
     setUserName("");
-    setPurchases([]);
-    setCards([]);
-    setFirstName("");
-    setLastName("");
-    setMobile("");
     setMessage(
       "از حساب خارج شدی"
     );
+  }
+
+  function goTo(path: string) {
+    window.location.href = path;
   }
 
   if (isLoggedIn) {
@@ -922,14 +331,13 @@ export default function ProfilePage() {
         dir="rtl"
         className="min-h-screen bg-slate-950 px-4 py-8 pb-10 text-white"
       >
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-2xl">
           {/* Header */}
           <div className="mb-8 flex items-center justify-between gap-3">
             <button
-              onClick={() => {
-                window.location.href =
-                  "/";
-              }}
+              onClick={() =>
+                goTo("/")
+              }
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg transition hover:bg-white/10"
               aria-label="بازگشت"
             >
@@ -977,641 +385,106 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Account information */}
+          {/* Menu */}
           <section className="mt-6">
             <div className="mb-4">
-              <div className="flex items-center gap-2">
-                <UserInfoIcon />
-
-                <h2 className="text-xl font-black">
-                  اطلاعات حساب کاربری
-                </h2>
-              </div>
+              <h2 className="text-xl font-black">
+                حساب کاربری
+              </h2>
 
               <p className="mt-1 text-xs text-slate-500">
-                اطلاعات شخصی و بانکی خودت را ثبت کن
+                بخش موردنظر خودت را انتخاب کن
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-xl">
-              {profileLoading ? (
-                <div className="py-10 text-center text-sm text-slate-400">
-                  در حال دریافت اطلاعات حساب...
+            <div className="space-y-3">
+              {/* Account information */}
+              <button
+                type="button"
+                onClick={() =>
+                  goTo(
+                    "/profile/account"
+                  )
+                }
+                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
+                  <UserInfoIcon />
                 </div>
-              ) : (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-bold">
-                        نام
-                      </label>
 
-                      <input
-                        type="text"
-                        value={firstName}
-                        onChange={(e) =>
-                          setFirstName(
-                            e.target.value
-                          )
-                        }
-                        placeholder="نام"
-                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
-                      />
-                    </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-black">
+                    اطلاعات حساب کاربری
+                  </h3>
 
-                    <div>
-                      <label className="mb-2 block text-sm font-bold">
-                        نام خانوادگی
-                      </label>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    نام، شماره موبایل و کارت‌های بانکی
+                  </p>
+                </div>
 
-                      <input
-                        type="text"
-                        value={lastName}
-                        onChange={(e) =>
-                          setLastName(
-                            e.target.value
-                          )
-                        }
-                        placeholder="نام خانوادگی"
-                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
-                      />
-                    </div>
-                  </div>
+                <div className="text-slate-500 transition group-hover:text-white">
+                  <ArrowIcon />
+                </div>
+              </button>
 
-                  <div className="mt-4">
-                    <label className="mb-2 block text-sm font-bold">
-                      شماره موبایل
-                    </label>
+              {/* Saved accounts */}
+              <button
+                type="button"
+                onClick={() =>
+                  goTo(
+                    "/profile/saved"
+                  )
+                }
+                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
+                  <BookmarkIcon />
+                </div>
 
-                    <input
-                      type="tel"
-                      value={mobile}
-                      onChange={(e) =>
-                        setMobile(
-                          e.target.value
-                        )
-                      }
-                      placeholder="مثلاً 09123456789"
-                      dir="ltr"
-                      className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
-                    />
-                  </div>
-
-                  {/* Cards */}
-                  <div className="mt-6 border-t border-white/10 pt-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <CardIcon />
-
-                          <h3 className="text-base font-black">
-                            کارت‌های بانکی
-                          </h3>
-                        </div>
-
-                        <p className="mt-2 text-xs leading-6 text-slate-400">
-                          ⚠️ حتماً فقط واریز و برداشت با این شماره کارت‌های ثبت‌شده انجام می‌شود.
-                        </p>
-                      </div>
-
-                      <span className="shrink-0 rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-400">
-                        {cards.length} کارت
-                      </span>
-                    </div>
-
-                    {cards.length === 0 ? (
-                      <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-center">
-                        <p className="text-sm text-slate-400">
-                          هنوز شماره کارتی ثبت نکرده‌ای.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="mt-4 space-y-4">
-                        {cards.map(
-                          (card, index) => {
-                            const isSaved =
-                              card.id > 0;
-
-                            const isSaving =
-                              cardSaving ===
-                              card.id;
-
-                            return (
-                              <div
-                                key={card.id}
-                                className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
-                              >
-                                <div className="mb-4 flex items-center justify-between">
-                                  <p className="text-sm font-bold">
-                                    کارت{" "}
-                                    {index + 1}
-                                  </p>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      deleteCard(
-                                        card
-                                      )
-                                    }
-                                    disabled={
-                                      isSaving
-                                    }
-                                    className="rounded-xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
-                                  >
-                                    {isSaving
-                                      ? "لطفاً صبر کن..."
-                                      : "حذف کارت"}
-                                  </button>
-                                </div>
-
-                                {isSaved ? (
-                                  <>
-                                    <div>
-                                      <p className="mb-1.5 text-xs text-slate-500">
-                                        شماره کارت
-                                      </p>
-
-                                      <div
-                                        dir="ltr"
-                                        className="rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-center text-sm font-bold tracking-wider text-slate-200"
-                                      >
-                                        {formatCardNumber(
-                                          card.cardNumber
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    <div className="mt-4">
-                                      <p className="mb-1.5 text-xs text-slate-500">
-                                        نام مالک کارت
-                                      </p>
-
-                                      <div className="rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-sm font-medium text-slate-200">
-                                        {
-                                          card.ownerName
-                                        }
-                                      </div>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div>
-                                      <label className="mb-2 block text-xs font-bold text-slate-400">
-                                        شماره کارت
-                                      </label>
-
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        maxLength={
-                                          19
-                                        }
-                                        value={
-                                          card.cardNumber
-                                        }
-                                        onChange={(
-                                          e
-                                        ) => {
-                                          const value =
-                                            e.target.value.replace(
-                                              /[^\d\s]/g,
-                                              ""
-                                            );
-
-                                          updateCard(
-                                            card.id,
-                                            "cardNumber",
-                                            value
-                                          );
-                                        }}
-                                        placeholder="6037 0000 0000 0000"
-                                        dir="ltr"
-                                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-white"
-                                      />
-                                    </div>
-
-                                    <div className="mt-4">
-                                      <label className="mb-2 block text-xs font-bold text-slate-400">
-                                        نام مالک کارت
-                                      </label>
-
-                                      <input
-                                        type="text"
-                                        value={
-                                          card.ownerName
-                                        }
-                                        onChange={(
-                                          e
-                                        ) =>
-                                          updateCard(
-                                            card.id,
-                                            "ownerName",
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder="نام و نام خانوادگی مالک کارت"
-                                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-white"
-                                      />
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        saveCard(
-                                          card
-                                        )
-                                      }
-                                      disabled={
-                                        isSaving
-                                      }
-                                      className="mt-4 w-full rounded-2xl bg-white py-3 text-sm font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                      {isSaving
-                                        ? "در حال ثبت کارت..."
-                                        : "ثبت این کارت"}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          }
-                        )}
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={addCard}
-                      className="mt-4 w-full rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-3.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
-                    >
-                      + افزودن شماره کارت
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={saveProfile}
-                    disabled={profileSaving}
-                    className="mt-6 w-full rounded-2xl bg-white py-3.5 text-sm font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {profileSaving
-                      ? "در حال ذخیره..."
-                      : "ذخیره اطلاعات شخصی"}
-                  </button>
-                </>
-              )}
-            </div>
-          </section>
-
-          {/* Saved products */}
-          <section className="mt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <BookmarkIcon saved={true} />
-
-                  <h2 className="text-xl font-black">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-black">
                     اکانت‌های ذخیره‌شده
-                  </h2>
+                  </h3>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    اکانت‌هایی که برای بعد ذخیره کرده‌ای
+                  </p>
                 </div>
 
-                <p className="mt-1 text-xs text-slate-500">
-                  اکانت‌هایی که ذخیره کرده‌ای
-                </p>
-              </div>
-
-              <span className="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-400">
-                {savedProducts.length} اکانت
-              </span>
-            </div>
-
-            {loadingSaved ? (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
-                <div className="flex justify-center text-slate-400">
-                  <BookmarkIcon saved={true} />
+                <div className="text-slate-500 transition group-hover:text-white">
+                  <ArrowIcon />
                 </div>
+              </button>
 
-                <p className="mt-3 text-sm text-slate-400">
-                  در حال دریافت ذخیره‌شده‌ها...
-                </p>
-              </div>
-            ) : savedProducts.length ===
-              0 ? (
-              <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
-                <div className="flex justify-center text-slate-500">
-                  <BookmarkIcon saved={false} />
-                </div>
-
-                <h3 className="mt-4 font-bold">
-                  هنوز اکانتی را ذخیره نکرده‌ای
-                </h3>
-
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  وقتی یک اکانت را ذخیره کنی، اینجا نمایش داده می‌شود.
-                </p>
-
-                <button
-                  onClick={() => {
-                    window.location.href =
-                      "/";
-                  }}
-                  className="mt-5 rounded-2xl bg-white px-6 py-3 text-sm font-bold text-slate-950"
-                >
-                  مشاهده اکانت‌ها
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {savedProducts.map(
-                  (product) => {
-                    const image =
-                      product.images?.[0] ||
-                      "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
-
-                    return (
-                      <article
-                        key={product.id}
-                        className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]"
-                      >
-                        <div className="relative aspect-square overflow-hidden">
-                          <img
-                            src={image}
-                            alt={
-                              product.title
-                            }
-                            className="h-full w-full object-cover"
-                          />
-
-                          {product.isSold && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-                              <span className="rounded-2xl bg-red-500/20 px-4 py-2 text-xs font-black text-red-300">
-                                فروخته شد
-                              </span>
-                            </div>
-                          )}
-
-                          <button
-                            onClick={() =>
-                              removeSaved(
-                                product.id
-                              )
-                            }
-                            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition hover:scale-110 hover:bg-black/75"
-                            aria-label="حذف از ذخیره‌شده‌ها"
-                          >
-                            <BookmarkIcon
-                              saved={true}
-                            />
-                          </button>
-                        </div>
-
-                        <div className="p-3">
-                          <p className="text-[10px] text-indigo-300">
-                            {product.game}
-                          </p>
-
-                          <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-5">
-                            {product.title}
-                          </h3>
-
-                          <div className="mt-3">
-                            <p className="text-base font-black">
-                              {formatPrice(
-                                product.price
-                              )}
-
-                              <span className="mr-1 text-[10px] font-normal text-slate-400">
-                                تومان
-                              </span>
-                            </p>
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              window.location.href =
-                                "/";
-                            }}
-                            className="mt-3 w-full rounded-xl bg-white py-2.5 text-xs font-bold text-slate-950"
-                          >
-                            مشاهده اکانت
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  }
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* Purchased accounts */}
-          <section className="mt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
+              {/* Purchased accounts */}
+              <button
+                type="button"
+                onClick={() =>
+                  goTo(
+                    "/profile/purchases"
+                  )
+                }
+                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
                   <CartIcon />
+                </div>
 
-                  <h2 className="text-xl font-black">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-black">
                     اکانت‌های خریداری‌شده
-                  </h2>
+                  </h3>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    مشاهده اکانت‌ها و اطلاعات خریدهای قبلی
+                  </p>
                 </div>
 
-                <p className="mt-1 text-xs text-slate-500">
-                  اطلاعات اکانت‌هایی که خریداری کرده‌ای
-                </p>
-              </div>
-
-              <span className="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-400">
-                {purchases.length} اکانت
-              </span>
+                <div className="text-slate-500 transition group-hover:text-white">
+                  <ArrowIcon />
+                </div>
+              </button>
             </div>
-
-            {loadingPurchases ? (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
-                <div className="flex justify-center text-slate-400">
-                  <CartIcon />
-                </div>
-
-                <p className="mt-3 text-sm text-slate-400">
-                  در حال دریافت خریدها...
-                </p>
-              </div>
-            ) : purchases.length ===
-              0 ? (
-              <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
-                <div className="flex justify-center text-slate-500">
-                  <CartIcon />
-                </div>
-
-                <h3 className="mt-4 font-bold">
-                  هنوز خریدی انجام نداده‌ای
-                </h3>
-
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  بعد از خرید، اطلاعات اکانت‌ها در این قسمت قرار می‌گیرد.
-                </p>
-
-                <button
-                  onClick={() => {
-                    window.location.href =
-                      "/";
-                  }}
-                  className="mt-5 rounded-2xl bg-white px-6 py-3 text-sm font-bold text-slate-950"
-                >
-                  مشاهده فروشگاه
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {purchases.map(
-                  (purchase) => {
-                    const isVisible =
-                      !!visibleCredentials[
-                        purchase.id
-                      ];
-
-                    return (
-                      <article
-                        key={purchase.id}
-                        className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-xl"
-                      >
-                        <div className="p-5">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                              <p className="text-[11px] font-bold text-indigo-300">
-                                {purchase.game}
-                              </p>
-
-                              <h3 className="mt-1 text-base font-black leading-6">
-                                {
-                                  purchase.productTitle
-                                }
-                              </h3>
-
-                              <p className="mt-1 text-xs text-slate-500">
-                                خرید در{" "}
-                                {formatDate(
-                                  purchase.createdAt
-                                )}
-                              </p>
-                            </div>
-
-                            <div className="shrink-0 rounded-xl bg-white/5 px-3 py-2 text-xs font-bold text-slate-300">
-                              {formatPrice(
-                                purchase.price
-                              )}{" "}
-                              تومان
-                            </div>
-                          </div>
-
-                          <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-bold">
-                                  اطلاعات ورود
-                                </p>
-
-                                <p className="mt-1 text-[11px] text-slate-500">
-                                  برای امنیت، اطلاعات به‌صورت مخفی نمایش داده می‌شوند.
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleCredentials(
-                                    purchase.id
-                                  )
-                                }
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-                                aria-label={
-                                  isVisible
-                                    ? "مخفی کردن اطلاعات"
-                                    : "نمایش اطلاعات"
-                                }
-                              >
-                                <EyeIcon
-                                  visible={
-                                    isVisible
-                                  }
-                                />
-                              </button>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div>
-                                <p className="mb-1.5 text-[11px] text-slate-500">
-                                  ایمیل / نام کاربری
-                                </p>
-
-                                <div
-                                  dir="ltr"
-                                  className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
-                                >
-                                  {isVisible
-                                    ? purchase.accountUsername
-                                    : "••••••••••••••••"}
-                                </div>
-                              </div>
-
-                              <div>
-                                <p className="mb-1.5 text-[11px] text-slate-500">
-                                  رمز عبور
-                                </p>
-
-                                <div
-                                  dir="ltr"
-                                  className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
-                                >
-                                  {isVisible
-                                    ? purchase.accountPassword
-                                    : "••••••••••••••••"}
-                                </div>
-                              </div>
-
-                              {purchase.backupPassword1 && (
-                                <div>
-                                  <p className="mb-1.5 text-[11px] text-slate-500">
-                                    بکاپ پسورد اول
-                                  </p>
-
-                                  <div
-                                    dir="ltr"
-                                    className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
-                                  >
-                                    {isVisible
-                                      ? purchase.backupPassword1
-                                      : "••••••••••••••••"}
-                                  </div>
-                                </div>
-                              )}
-
-                              {purchase.backupPassword2 && (
-                                <div>
-                                  <p className="mb-1.5 text-[11px] text-slate-500">
-                                    بکاپ پسورد دوم
-                                  </p>
-
-                                  <div
-                                    dir="ltr"
-                                    className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
-                                  >
-                                    {isVisible
-                                      ? purchase.backupPassword2
-                                      : "••••••••••••••••"}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  }
-                )}
-              </div>
-            )}
           </section>
 
           {message && (
@@ -1697,7 +570,9 @@ export default function ProfilePage() {
                   type="text"
                   value={name}
                   onChange={(e) =>
-                    setName(e.target.value)
+                    setName(
+                      e.target.value
+                    )
                   }
                   placeholder="مثلاً محمد سراغی"
                   className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
@@ -1843,10 +718,9 @@ export default function ProfilePage() {
         </div>
 
         <button
-          onClick={() => {
-            window.location.href =
-              "/";
-          }}
+          onClick={() =>
+            goTo("/")
+          }
           className="mt-5 w-full text-center text-sm text-slate-500 transition hover:text-white"
         >
           ← بازگشت به فروشگاه
