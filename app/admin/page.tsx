@@ -738,7 +738,7 @@ export default function AdminPage() {
           await supabase.rpc(
             "update_product_account",
             {
-              p_product_id: editingId,
+              p_id: editingId,
 
               p_game:
                 selectedGame.trim(),
