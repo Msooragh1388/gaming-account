@@ -36,7 +36,7 @@ function formatDate(date: string) {
 
 function getStatusText(status: Transaction["status"]) {
   if (status === "pending") {
-    return "در انتظار تأیید";
+    return "در انتظار";
   }
 
   if (status === "approved") {
@@ -57,24 +57,24 @@ function ArrowIcon({
 }) {
   return (
     <svg
-      width="22"
-      height="22"
+      width="17"
+      height="17"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
       {direction === "down" ? (
         <>
-          <path d="M12 4v15" />
-          <path d="m6 13 6 6 6-6" />
+          <path d="M12 5v14" />
+          <path d="m7 14 5 5 5-5" />
         </>
       ) : (
         <>
-          <path d="M12 20V5" />
-          <path d="m6 11 6-6 6 6" />
+          <path d="M12 19V5" />
+          <path d="m7 10 5-5 5 5" />
         </>
       )}
     </svg>
@@ -86,45 +86,20 @@ function StatusDot({
 }: {
   status: Transaction["status"];
 }) {
-  if (status === "pending") {
-    return (
-      <span
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: "#f59e0b",
-          display: "inline-block",
-          flexShrink: 0,
-        }}
-      />
-    );
-  }
-
-  if (status === "approved") {
-    return (
-      <span
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: "#22c55e",
-          display: "inline-block",
-          flexShrink: 0,
-        }}
-      />
-    );
-  }
-
   return (
     <span
       style={{
-        width: 7,
-        height: 7,
+        width: 5,
+        height: 5,
         borderRadius: "50%",
-        background: "#ef4444",
         display: "inline-block",
         flexShrink: 0,
+        background:
+          status === "pending"
+            ? "#f59e0b"
+            : status === "approved"
+            ? "#22c55e"
+            : "#ef4444",
       }}
     />
   );
@@ -222,15 +197,15 @@ export default function TransactionsPage() {
       style={{
         minHeight: "100vh",
         background:
-          "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
+          "linear-gradient(180deg, #0b1120 0%, #111827 100%)",
         color: "#fff",
-        padding: "24px 16px 40px",
+        padding: "18px 14px 110px",
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: 760,
+          maxWidth: 700,
           margin: "0 auto",
         }}
       >
@@ -240,127 +215,125 @@ export default function TransactionsPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 22,
+            marginBottom: 18,
           }}
         >
           <button
+            type="button"
             onClick={() => router.push("/profile")}
             style={{
-              width: 38,
-              height: 38,
+              width: 34,
+              height: 34,
               borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.05)",
-              color: "#fff",
+              border:
+                "1px solid rgba(255,255,255,0.055)",
+              background:
+                "rgba(255,255,255,0.035)",
+              color: "#cbd5e1",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 20,
+              fontSize: 17,
+              transition: "0.2s",
             }}
           >
             ←
           </button>
 
-          <h1
+          <div
             style={{
-              margin: 0,
-              fontSize: 22,
-              fontWeight: 800,
+              textAlign: "center",
             }}
           >
-            تراکنش‌ها
-          </h1>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 19,
+                fontWeight: 750,
+                letterSpacing: "-0.3px",
+              }}
+            >
+              تراکنش‌ها
+            </h1>
 
-          <div style={{ width: 38 }} />
+            <div
+              style={{
+                marginTop: 3,
+                fontSize: 10,
+                color: "#64748b",
+              }}
+            >
+              تاریخچه کیف پول
+            </div>
+          </div>
+
+          <div style={{ width: 34 }} />
         </div>
 
         {/* Filters */}
         <div
           style={{
             display: "flex",
-            gap: 8,
-            marginBottom: 18,
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            padding: 6,
-            borderRadius: 14,
+            gap: 4,
+            marginBottom: 14,
+            padding: 4,
+            borderRadius: 12,
+            background:
+              "rgba(255,255,255,0.025)",
+            border:
+              "1px solid rgba(255,255,255,0.05)",
           }}
         >
-          <button
-            onClick={() => setFilter("all")}
-            style={{
-              flex: 1,
-              height: 38,
-              border: "none",
-              borderRadius: 10,
-              background:
-                filter === "all"
-                  ? "#334155"
-                  : "transparent",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            همه
-          </button>
-
-          <button
-            onClick={() => setFilter("deposit")}
-            style={{
-              flex: 1,
-              height: 38,
-              border: "none",
-              borderRadius: 10,
-              background:
-                filter === "deposit"
-                  ? "#334155"
-                  : "transparent",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            واریز
-          </button>
-
-          <button
-            onClick={() => setFilter("withdraw")}
-            style={{
-              flex: 1,
-              height: 38,
-              border: "none",
-              borderRadius: 10,
-              background:
-                filter === "withdraw"
-                  ? "#334155"
-                  : "transparent",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            برداشت
-          </button>
+          {(
+            [
+              ["all", "همه"],
+              ["deposit", "واریز"],
+              ["withdraw", "برداشت"],
+            ] as [FilterType, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              style={{
+                flex: 1,
+                height: 34,
+                border: "none",
+                borderRadius: 9,
+                background:
+                  filter === value
+                    ? "rgba(255,255,255,0.075)"
+                    : "transparent",
+                color:
+                  filter === value
+                    ? "#f8fafc"
+                    : "#64748b",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight:
+                  filter === value ? 700 : 500,
+                transition: "0.2s",
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Loading */}
         {loading && (
           <div
             style={{
-              background:
-                "rgba(255,255,255,0.04)",
-              border:
-                "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 16,
-              padding: 28,
+              padding: 26,
               textAlign: "center",
-              color: "#cbd5e1",
-              fontSize: 14,
+              color: "#64748b",
+              fontSize: 12,
+              borderRadius: 14,
+              border:
+                "1px solid rgba(255,255,255,0.05)",
+              background:
+                "rgba(255,255,255,0.025)",
             }}
           >
             در حال دریافت تراکنش‌ها...
@@ -371,15 +344,15 @@ export default function TransactionsPage() {
         {!loading && error && (
           <div
             style={{
-              background:
-                "rgba(239,68,68,0.08)",
-              border:
-                "1px solid rgba(239,68,68,0.2)",
-              borderRadius: 16,
-              padding: 20,
+              padding: 18,
               textAlign: "center",
               color: "#fca5a5",
-              fontSize: 14,
+              fontSize: 12,
+              borderRadius: 14,
+              border:
+                "1px solid rgba(239,68,68,0.14)",
+              background:
+                "rgba(239,68,68,0.055)",
             }}
           >
             {error}
@@ -392,19 +365,28 @@ export default function TransactionsPage() {
           filteredTransactions.length === 0 && (
             <div
               style={{
-                background:
-                  "rgba(255,255,255,0.04)",
-                border:
-                  "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 16,
-                padding: 40,
+                padding: "42px 20px",
                 textAlign: "center",
+                borderRadius: 14,
+                border:
+                  "1px solid rgba(255,255,255,0.05)",
+                background:
+                  "rgba(255,255,255,0.025)",
               }}
             >
               <div
                 style={{
-                  fontSize: 38,
-                  marginBottom: 12,
+                  width: 42,
+                  height: 42,
+                  margin: "0 auto 12px",
+                  borderRadius: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background:
+                    "rgba(255,255,255,0.035)",
+                  color: "#64748b",
+                  fontSize: 19,
                 }}
               >
                 ↔
@@ -412,9 +394,10 @@ export default function TransactionsPage() {
 
               <div
                 style={{
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: 700,
-                  marginBottom: 6,
+                  color: "#cbd5e1",
+                  marginBottom: 5,
                 }}
               >
                 تراکنشی وجود ندارد
@@ -422,8 +405,8 @@ export default function TransactionsPage() {
 
               <div
                 style={{
-                  fontSize: 13,
-                  color: "#94a3b8",
+                  fontSize: 11,
+                  color: "#64748b",
                 }}
               >
                 تراکنش‌های کیف پول شما اینجا نمایش داده می‌شوند.
@@ -439,25 +422,24 @@ export default function TransactionsPage() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 10,
+                gap: 7,
               }}
             >
               {filteredTransactions.map(
                 (transaction) => {
                   const isDeposit =
-                    transaction.type ===
-                    "deposit";
+                    transaction.type === "deposit";
 
                   return (
                     <div
                       key={transaction.id}
                       style={{
-                        background:
-                          "rgba(255,255,255,0.04)",
+                        borderRadius: 14,
                         border:
-                          "1px solid rgba(255,255,255,0.06)",
-                        borderRadius: 16,
-                        padding: 16,
+                          "1px solid rgba(255,255,255,0.055)",
+                        background:
+                          "rgba(255,255,255,0.028)",
+                        padding: "12px 13px",
                       }}
                     >
                       {/* Top */}
@@ -467,29 +449,31 @@ export default function TransactionsPage() {
                           alignItems: "center",
                           justifyContent:
                             "space-between",
-                          gap: 12,
-                          marginBottom: 14,
+                          gap: 10,
                         }}
                       >
                         <div
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 11,
+                            gap: 10,
+                            minWidth: 0,
                           }}
                         >
                           <div
                             style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 12,
+                              width: 34,
+                              height: 34,
+                              borderRadius: 10,
+                              flexShrink: 0,
                               background:
-                                "rgba(255,255,255,0.06)",
+                                "rgba(255,255,255,0.04)",
+                              border:
+                                "1px solid rgba(255,255,255,0.035)",
                               display: "flex",
                               alignItems: "center",
-                              justifyContent:
-                                "center",
-                              color: "#e2e8f0",
+                              justifyContent: "center",
+                              color: "#94a3b8",
                             }}
                           >
                             <ArrowIcon
@@ -501,27 +485,50 @@ export default function TransactionsPage() {
                             />
                           </div>
 
-                          <div>
+                          <div
+                            style={{
+                              minWidth: 0,
+                            }}
+                          >
                             <div
                               style={{
-                                fontSize: 15,
-                                fontWeight: 800,
-                                marginBottom: 4,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 7,
                               }}
                             >
-                              {getTypeText(
-                                transaction.type
-                              )}
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  color: "#e2e8f0",
+                                }}
+                              >
+                                {getTypeText(
+                                  transaction.type
+                                )}
+                              </span>
+
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  color: "#475569",
+                                }}
+                              >
+                                #{transaction.id}
+                              </span>
                             </div>
 
                             <div
                               style={{
-                                fontSize: 12,
-                                color: "#94a3b8",
+                                marginTop: 3,
+                                fontSize: 10,
+                                color: "#64748b",
                               }}
                             >
-                              تراکنش #
-                              {transaction.id}
+                              {formatDate(
+                                transaction.createdAt
+                              )}
                             </div>
                           </div>
                         </div>
@@ -531,12 +538,8 @@ export default function TransactionsPage() {
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 6,
-                            padding:
-                              "6px 9px",
-                            borderRadius: 9,
-                            background:
-                              "rgba(255,255,255,0.05)",
+                            gap: 5,
+                            flexShrink: 0,
                             color:
                               transaction.status ===
                               "pending"
@@ -545,10 +548,8 @@ export default function TransactionsPage() {
                                   "approved"
                                 ? "#4ade80"
                                 : "#f87171",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            whiteSpace:
-                              "nowrap",
+                            fontSize: 10,
+                            fontWeight: 600,
                           }}
                         >
                           <StatusDot
@@ -556,30 +557,32 @@ export default function TransactionsPage() {
                               transaction.status
                             }
                           />
+
                           {getStatusText(
                             transaction.status
                           )}
                         </div>
                       </div>
 
-                      {/* Amount */}
+                      {/* Bottom */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent:
                             "space-between",
-                          paddingTop: 12,
+                          marginTop: 10,
+                          paddingTop: 9,
                           borderTop:
-                            "1px solid rgba(255,255,255,0.06)",
+                            "1px solid rgba(255,255,255,0.045)",
                         }}
                       >
                         <div>
                           <div
                             style={{
-                              fontSize: 11,
-                              color: "#64748b",
-                              marginBottom: 5,
+                              fontSize: 9,
+                              color: "#475569",
+                              marginBottom: 3,
                             }}
                           >
                             مبلغ
@@ -587,46 +590,37 @@ export default function TransactionsPage() {
 
                           <div
                             style={{
-                              fontSize: 17,
-                              fontWeight: 800,
+                              fontSize: 14,
+                              fontWeight: 750,
+                              color: isDeposit
+                                ? "#e2e8f0"
+                                : "#cbd5e1",
                             }}
                           >
-                            {isDeposit
-                              ? "+"
-                              : "-"}
-                            {" "}
+                            {isDeposit ? "+" : "-"}{" "}
                             {formatAmount(
                               transaction.amount
                             )}{" "}
-                            تومان
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontWeight: 500,
+                                color: "#64748b",
+                              }}
+                            >
+                              تومان
+                            </span>
                           </div>
                         </div>
 
                         <div
                           style={{
                             textAlign: "left",
+                            fontSize: 10,
+                            color: "#475569",
                           }}
                         >
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "#64748b",
-                              marginBottom: 5,
-                            }}
-                          >
-                            تاریخ
-                          </div>
-
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: "#cbd5e1",
-                            }}
-                          >
-                            {formatDate(
-                              transaction.createdAt
-                            )}
-                          </div>
+                          کیف پول
                         </div>
                       </div>
 
@@ -634,9 +628,13 @@ export default function TransactionsPage() {
                       {transaction.description && (
                         <div
                           style={{
-                            marginTop: 12,
-                            fontSize: 12,
-                            color: "#94a3b8",
+                            marginTop: 8,
+                            paddingTop: 8,
+                            borderTop:
+                              "1px solid rgba(255,255,255,0.035)",
+                            fontSize: 10,
+                            lineHeight: 1.8,
+                            color: "#64748b",
                           }}
                         >
                           {transaction.description}

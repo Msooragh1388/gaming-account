@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -22,13 +23,13 @@ function BookmarkIcon() {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      className="h-6 w-6"
+      className="h-5 w-5"
       xmlns="http://www.w3.org/2000/svg"
     >
       <path
         d="M6 4.75C6 3.7835 6.7835 3 7.75 3H16.25C17.2165 3 18 3.7835 18 4.75V21L12 17.5L6 21V4.75Z"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinejoin="round"
       />
     </svg>
@@ -40,7 +41,7 @@ function ArrowIcon() {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      className="h-5 w-5"
+      className="h-4 w-4"
       xmlns="http://www.w3.org/2000/svg"
     >
       <path
@@ -59,37 +60,37 @@ function TrashIcon() {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      className="h-5 w-5"
+      className="h-4 w-4"
       xmlns="http://www.w3.org/2000/svg"
     >
       <path
         d="M5 7H19"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
       />
       <path
         d="M9 7V5.5C9 4.67 9.67 4 10.5 4H13.5C14.33 4 15 4.67 15 5.5V7"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
       />
       <path
         d="M7 7L7.8 19C7.87 20.12 8.8 21 9.92 21H14.08C15.2 21 16.13 20.12 16.2 19L17 7"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinejoin="round"
       />
       <path
         d="M10 11V17"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
       />
       <path
         d="M14 11V17"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
       />
     </svg>
@@ -97,9 +98,7 @@ function TrashIcon() {
 }
 
 export default function SavedAccountsPage() {
-  const [products, setProducts] = useState<Product[]>(
-    []
-  );
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -114,10 +113,9 @@ export default function SavedAccountsPage() {
     setError("");
 
     try {
-      const savedRaw =
-        localStorage.getItem(
-          "gaming_account_saved"
-        );
+      const savedRaw = localStorage.getItem(
+        "gaming_account_saved"
+      );
 
       if (!savedRaw) {
         setProducts([]);
@@ -127,17 +125,14 @@ export default function SavedAccountsPage() {
       let savedIds: number[] = [];
 
       try {
-        const parsed = JSON.parse(
-          savedRaw
-        );
+        const parsed = JSON.parse(savedRaw);
 
         if (Array.isArray(parsed)) {
           savedIds = parsed
             .map((id) => Number(id))
             .filter(
               (id) =>
-                Number.isInteger(id) &&
-                id > 0
+                Number.isInteger(id) && id > 0
             );
         }
       } catch {
@@ -149,13 +144,12 @@ export default function SavedAccountsPage() {
         return;
       }
 
-      const { data, error } =
-        await supabase
-          .from("ProductPublic")
-          .select(
-            "id, game, title, description, price, images, videoUrl, isSold, likes, createdAt, updatedAt"
-          )
-          .in("id", savedIds);
+      const { data, error } = await supabase
+        .from("ProductPublic")
+        .select(
+          "id, game, title, description, price, images, videoUrl, isSold, likes, createdAt, updatedAt"
+        )
+        .in("id", savedIds);
 
       if (error) {
         console.error(
@@ -168,36 +162,30 @@ export default function SavedAccountsPage() {
         );
       }
 
-      const loadedProducts =
-        (data || []) as Product[];
+      const loadedProducts = (data ||
+        []) as Product[];
 
-      // ترتیب را مطابق ترتیب ذخیره‌شدن نگه می‌داریم
-      const sortedProducts =
-        savedIds
-          .map((id) =>
-            loadedProducts.find(
-              (product) =>
-                Number(product.id) === id
-            )
+      const sortedProducts = savedIds
+        .map((id) =>
+          loadedProducts.find(
+            (product) =>
+              Number(product.id) === id
           )
-          .filter(
-            (
-              product
-            ): product is Product =>
-              Boolean(product)
-          );
-
-      // اگر بعضی محصولات دیگر وجود نداشته باشند،
-      // آن‌ها را از localStorage پاک می‌کنیم.
-      const existingIds =
-        loadedProducts.map(
-          (product) => Number(product.id)
+        )
+        .filter(
+          (
+            product
+          ): product is Product =>
+            Boolean(product)
         );
 
-      const cleanedIds =
-        savedIds.filter((id) =>
-          existingIds.includes(id)
-        );
+      const existingIds = loadedProducts.map(
+        (product) => Number(product.id)
+      );
+
+      const cleanedIds = savedIds.filter(
+        (id) => existingIds.includes(id)
+      );
 
       if (
         cleanedIds.length !==
@@ -225,17 +213,17 @@ export default function SavedAccountsPage() {
 
   function removeSaved(productId: number) {
     try {
-      const savedRaw =
-        localStorage.getItem(
-          "gaming_account_saved"
-        );
+      const savedRaw = localStorage.getItem(
+        "gaming_account_saved"
+      );
 
       let savedIds: number[] = [];
 
       if (savedRaw) {
         try {
-          const parsed =
-            JSON.parse(savedRaw);
+          const parsed = JSON.parse(
+            savedRaw
+          );
 
           if (Array.isArray(parsed)) {
             savedIds = parsed
@@ -251,11 +239,10 @@ export default function SavedAccountsPage() {
         }
       }
 
-      const newIds =
-        savedIds.filter(
-          (id) =>
-            id !== Number(productId)
-        );
+      const newIds = savedIds.filter(
+        (id) =>
+          id !== Number(productId)
+      );
 
       localStorage.setItem(
         "gaming_account_saved",
@@ -288,8 +275,7 @@ export default function SavedAccountsPage() {
   }
 
   function goBack() {
-    window.location.href =
-      "/profile";
+    window.location.href = "/profile";
   }
 
   function formatPrice(price: number) {
@@ -307,9 +293,9 @@ export default function SavedAccountsPage() {
         <div className="mx-auto max-w-2xl">
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-white" />
+              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-slate-700 border-t-white" />
 
-              <p className="mt-4 text-sm text-slate-400">
+              <p className="mt-4 text-xs text-slate-500">
                 در حال دریافت اکانت‌های ذخیره‌شده...
               </p>
             </div>
@@ -322,15 +308,16 @@ export default function SavedAccountsPage() {
   return (
     <main
       dir="rtl"
-      className="min-h-screen bg-slate-950 px-4 py-8 pb-12 text-white"
+      className="min-h-screen bg-slate-950 px-4 py-7 pb-16 text-white"
     >
       <div className="mx-auto max-w-2xl">
+
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between gap-3">
+        <div className="mb-7 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={goBack}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg transition hover:bg-white/10"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-sm text-slate-400 transition hover:bg-white/[0.07] hover:text-white"
             aria-label="بازگشت"
           >
             →
@@ -338,42 +325,42 @@ export default function SavedAccountsPage() {
 
           <div className="text-center">
             <div className="flex justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-950">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-slate-200">
                 <BookmarkIcon />
               </div>
             </div>
 
-            <h1 className="mt-3 text-xl font-black">
+            <h1 className="mt-3 text-lg font-bold">
               اکانت‌های ذخیره‌شده
             </h1>
 
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-[11px] text-slate-600">
               اکانت‌هایی که برای بعد ذخیره کرده‌ای
             </p>
           </div>
 
-          <div className="w-10" />
+          <div className="w-9" />
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300">
+          <div className="mb-4 rounded-xl border border-red-500/15 bg-red-500/[0.06] px-4 py-3 text-center text-xs text-red-300">
             {error}
           </div>
         )}
 
         {/* Empty */}
         {products.length === 0 ? (
-          <section className="rounded-3xl border border-white/10 bg-slate-900 p-8 text-center shadow-xl">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800 text-slate-400">
+          <section className="rounded-2xl border border-white/[0.07] bg-slate-900/70 p-7 text-center shadow-lg">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.05] text-slate-500">
               <BookmarkIcon />
             </div>
 
-            <h2 className="mt-5 text-lg font-black">
+            <h2 className="mt-4 text-sm font-bold">
               هنوز اکانتی ذخیره نکرده‌ای
             </h2>
 
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p className="mt-2 text-xs leading-6 text-slate-600">
               وقتی یک اکانت را ذخیره کنی،
               از اینجا می‌توانی دوباره آن را ببینی.
             </p>
@@ -381,10 +368,9 @@ export default function SavedAccountsPage() {
             <button
               type="button"
               onClick={() =>
-                (window.location.href =
-                  "/")
+                (window.location.href = "/")
               }
-              className="mt-6 w-full rounded-2xl bg-white py-3.5 font-black text-slate-950 transition hover:bg-slate-200"
+              className="mt-5 w-full rounded-xl bg-white py-3 text-xs font-bold text-slate-950 transition hover:bg-slate-200 active:scale-[0.99]"
             >
               رفتن به فروشگاه
             </button>
@@ -392,8 +378,8 @@ export default function SavedAccountsPage() {
         ) : (
           <>
             {/* Count */}
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm text-slate-400">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs text-slate-600">
                 {products.length.toLocaleString(
                   "fa-IR"
                 )}{" "}
@@ -402,13 +388,13 @@ export default function SavedAccountsPage() {
             </div>
 
             {/* Products */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {products.map((product) => (
                 <article
                   key={product.id}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-xl"
+                  className="overflow-hidden rounded-2xl border border-white/[0.07] bg-slate-900/70 shadow-lg"
                 >
-                  <div className="flex gap-4 p-4">
+                  <div className="flex gap-3 p-3">
                     {/* Image */}
                     <button
                       type="button"
@@ -417,23 +403,20 @@ export default function SavedAccountsPage() {
                           product.id
                         )
                       }
-                      className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-slate-800"
+                      className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-800/70"
                     >
                       {product.images &&
                       product.images.length >
                         0 ? (
                         <img
                           src={
-                            product
-                              .images[0]
+                            product.images[0]
                           }
-                          alt={
-                            product.title
-                          }
+                          alt={product.title}
                           className="h-full w-full object-cover transition hover:scale-105"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">
+                        <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-600">
                           بدون تصویر
                         </div>
                       )}
@@ -451,7 +434,7 @@ export default function SavedAccountsPage() {
                           }
                           className="min-w-0 text-right"
                         >
-                          <h2 className="line-clamp-2 font-black leading-6 transition hover:text-slate-300">
+                          <h2 className="line-clamp-2 text-sm font-bold leading-5 transition hover:text-slate-300">
                             {product.title}
                           </h2>
                         </button>
@@ -463,19 +446,19 @@ export default function SavedAccountsPage() {
                               product.id
                             )
                           }
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-300 transition hover:bg-red-500/20"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/[0.06] text-red-400/70 transition hover:bg-red-500/10 hover:text-red-300"
                           aria-label="حذف از ذخیره‌شده‌ها"
                         >
                           <TrashIcon />
                         </button>
                       </div>
 
-                      <p className="mt-2 text-xs text-slate-500">
+                      <p className="mt-1.5 text-[11px] text-slate-600">
                         {product.game}
                       </p>
 
-                      <div className="mt-4 flex items-center justify-between gap-3">
-                        <p className="text-sm font-black text-white">
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-slate-300">
                           {formatPrice(
                             product.price
                           )}{" "}
@@ -483,7 +466,7 @@ export default function SavedAccountsPage() {
                         </p>
 
                         {product.isSold ? (
-                          <span className="rounded-xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300">
+                          <span className="rounded-lg bg-red-500/[0.06] px-2.5 py-1.5 text-[10px] font-bold text-red-300/80">
                             فروخته شده
                           </span>
                         ) : (
@@ -494,7 +477,7 @@ export default function SavedAccountsPage() {
                                 product.id
                               )
                             }
-                            className="flex items-center gap-1 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-slate-200"
+                            className="flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-950 transition hover:bg-slate-200 active:scale-[0.98]"
                           >
                             مشاهده
                             <ArrowIcon />
@@ -513,7 +496,7 @@ export default function SavedAccountsPage() {
         <button
           type="button"
           onClick={goBack}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-900 py-3.5 text-sm font-bold text-slate-300 transition hover:bg-slate-800 hover:text-white"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] py-3 text-xs font-medium text-slate-500 transition hover:bg-white/[0.05] hover:text-slate-300"
         >
           <span>→</span>
           بازگشت به پروفایل
@@ -521,7 +504,7 @@ export default function SavedAccountsPage() {
 
         {/* Toast */}
         {message && (
-          <div className="fixed bottom-6 left-1/2 z-[300] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white shadow-2xl">
+          <div className="fixed bottom-6 left-1/2 z-[300] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 rounded-xl border border-white/10 bg-slate-900/95 px-4 py-3 text-xs font-medium text-white shadow-2xl backdrop-blur">
             {message}
           </div>
         )}

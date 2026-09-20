@@ -26,19 +26,19 @@ function WalletIcon() {
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="h-7 w-7"
+      className="h-5 w-5"
     >
       <path
         d="M4 7.5C4 6.12 5.12 5 6.5 5H19C19.55 5 20 5.45 20 6V18C20 18.55 19.55 19 19 19H6.5C5.12 19 4 17.88 4 16.5V7.5Z"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinejoin="round"
       />
 
       <path
         d="M4 8H18.5C19.33 8 20 8.67 20 9.5V14.5C20 15.33 19.33 16 18.5 16H16C14.34 16 13 14.66 13 13C13 11.34 14.34 10 16 10H20"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -63,21 +63,21 @@ function ArrowIcon({
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="h-5 w-5"
+      className="h-4.5 w-4.5"
     >
       {direction === "up" ? (
         <>
           <path
             d="M12 19V5"
             stroke="currentColor"
-            strokeWidth="1.8"
+            strokeWidth="1.7"
             strokeLinecap="round"
           />
 
           <path
             d="M6 11L12 5L18 11"
             stroke="currentColor"
-            strokeWidth="1.8"
+            strokeWidth="1.7"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -87,14 +87,14 @@ function ArrowIcon({
           <path
             d="M12 5V19"
             stroke="currentColor"
-            strokeWidth="1.8"
+            strokeWidth="1.7"
             strokeLinecap="round"
           />
 
           <path
             d="M6 13L12 19L18 13"
             stroke="currentColor"
-            strokeWidth="1.8"
+            strokeWidth="1.7"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -110,7 +110,7 @@ function CardIcon() {
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="h-6 w-6"
+      className="h-5 w-5"
     >
       <rect
         x="3"
@@ -119,19 +119,19 @@ function CardIcon() {
         height="14"
         rx="2.5"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
       />
 
       <path
         d="M3 9H21"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
       />
 
       <path
         d="M7 14H11"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
       />
     </svg>
@@ -402,14 +402,7 @@ export default function WalletPage() {
       return;
     }
 
-    /*
-      برای واریز، کارت مقصد کارت شماست.
-      برای برداشت، کارت انتخاب‌شده کاربر ارسال می‌شود.
-    */
-    const cardId =
-      action === "withdraw"
-        ? selectedCardId
-        : selectedCardId;
+    const cardId = selectedCardId;
 
     if (
       action === "deposit" &&
@@ -492,11 +485,11 @@ export default function WalletPage() {
         className="min-h-screen bg-slate-950 px-4 py-8 text-white"
       >
         <div className="mx-auto max-w-2xl">
-          <div className="flex min-h-[70vh] items-center justify-center">
+          <div className="flex min-h-[65vh] items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-white" />
+              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-[3px] border-slate-800 border-t-slate-300" />
 
-              <p className="mt-4 text-sm text-slate-400">
+              <p className="mt-4 text-xs text-slate-500">
                 در حال دریافت اطلاعات کیف پول...
               </p>
             </div>
@@ -509,15 +502,16 @@ export default function WalletPage() {
   return (
     <main
       dir="rtl"
-      className="min-h-screen bg-slate-950 px-4 py-8 pb-12 text-white"
+      className="min-h-screen bg-slate-950 px-4 py-7 pb-28 text-white"
     >
       <div className="mx-auto max-w-2xl">
 
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between gap-3">
+        <div className="mb-7 flex items-center justify-between gap-3">
           <button
+            type="button"
             onClick={handleBack}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg transition hover:bg-white/10"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] text-sm text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
             aria-label="بازگشت"
           >
             →
@@ -525,48 +519,50 @@ export default function WalletPage() {
 
           <div className="text-center">
             <div className="flex justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-950">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-950 shadow-lg shadow-black/10">
                 <WalletIcon />
               </div>
             </div>
 
-            <h1 className="mt-3 text-xl font-black">
+            <h1 className="mt-3 text-lg font-black">
               کیف پول
             </h1>
+
+            <p className="mt-1 text-[11px] text-slate-500">
+              مدیریت موجودی و درخواست‌های مالی
+            </p>
           </div>
 
-          <div className="w-10" />
+          <div className="w-9" />
         </div>
 
         {/* Balance */}
-        <div className="rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-xl">
-          <p className="text-sm text-slate-500">
+        <section className="rounded-2xl border border-white/[0.07] bg-slate-900/70 p-5 shadow-lg shadow-black/10">
+          <p className="text-[11px] text-slate-500">
             موجودی کیف پول
           </p>
 
-          <div className="mt-3 flex items-end gap-2">
-            <span className="text-3xl font-black">
-              {formatToman(
-                wallet.balance
-              )}
+          <div className="mt-2 flex items-end gap-2">
+            <span className="text-2xl font-black tracking-tight">
+              {formatToman(wallet.balance)}
             </span>
 
-            <span className="pb-1 text-sm text-slate-500">
+            <span className="pb-0.5 text-xs text-slate-500">
               تومان
             </span>
           </div>
-        </div>
+        </section>
 
         {/* Success */}
         {message && (
-          <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-center text-sm leading-6 text-emerald-300">
+          <div className="mt-3 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.07] px-4 py-3 text-center text-xs leading-5 text-emerald-300">
             {message}
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-center text-sm leading-6 text-red-300">
+          <div className="mt-3 rounded-xl border border-red-500/15 bg-red-500/[0.07] px-4 py-3 text-center text-xs leading-5 text-red-300">
             {error}
           </div>
         )}
@@ -574,74 +570,74 @@ export default function WalletPage() {
         {/* Main buttons */}
         {action === "none" && (
           <section className="mt-6">
-            <div className="mb-4">
-              <h2 className="text-lg font-black">
+            <div className="mb-3">
+              <h2 className="text-sm font-black">
                 عملیات کیف پول
               </h2>
 
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-[11px] text-slate-500">
                 عملیات موردنظر خودت را انتخاب کن
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
 
-              {/* واریز - فلش پایین */}
+              {/* Deposit */}
               <button
                 type="button"
                 onClick={() =>
                   selectAction("deposit")
                 }
-                className="group rounded-2xl border border-white/10 bg-slate-900 px-5 py-4 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+                className="group rounded-2xl border border-white/[0.07] bg-slate-900/70 px-4 py-4 text-right transition hover:border-white/[0.13] hover:bg-slate-900"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-950">
                     <ArrowIcon direction="down" />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-bold">
+                    <h3 className="text-sm font-bold">
                       واریز
                     </h3>
 
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-1 text-[10px] text-slate-500">
                       افزایش موجودی کیف پول
                     </p>
                   </div>
 
-                  <div className="text-lg text-slate-600 transition group-hover:text-white">
+                  <div className="text-sm text-slate-600 transition group-hover:text-slate-300">
                     ←
                   </div>
 
                 </div>
               </button>
 
-              {/* برداشت - فلش بالا */}
+              {/* Withdraw */}
               <button
                 type="button"
                 onClick={() =>
                   selectAction("withdraw")
                 }
-                className="group rounded-2xl border border-white/10 bg-slate-900 px-5 py-4 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+                className="group rounded-2xl border border-white/[0.07] bg-slate-900/70 px-4 py-4 text-right transition hover:border-white/[0.13] hover:bg-slate-900"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-950">
                     <ArrowIcon direction="up" />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-bold">
+                    <h3 className="text-sm font-bold">
                       برداشت
                     </h3>
 
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-1 text-[10px] text-slate-500">
                       درخواست برداشت موجودی
                     </p>
                   </div>
 
-                  <div className="text-lg text-slate-600 transition group-hover:text-white">
+                  <div className="text-sm text-slate-600 transition group-hover:text-slate-300">
                     ←
                   </div>
 
@@ -656,16 +652,17 @@ export default function WalletPage() {
         {action !== "none" && (
           <section className="mt-6">
 
-            <div className="mb-4 flex items-center justify-between">
+            {/* Action header */}
+            <div className="mb-4 flex items-center justify-between gap-3">
 
               <div>
-                <h2 className="text-lg font-black">
+                <h2 className="text-sm font-black">
                   {action === "deposit"
                     ? "واریز به کیف پول"
                     : "برداشت از کیف پول"}
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-[11px] text-slate-500">
                   مبلغ بین ۵۰ هزار تا ۱۰ میلیون تومان
                 </p>
               </div>
@@ -673,7 +670,7 @@ export default function WalletPage() {
               <button
                 type="button"
                 onClick={cancelAction}
-                className="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-400 transition hover:bg-white/10 hover:text-white"
+                className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[11px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
               >
                 بازگشت
               </button>
@@ -682,60 +679,59 @@ export default function WalletPage() {
 
             {/* Deposit information */}
             {action === "deposit" && (
-              <div className="mb-5 rounded-3xl border border-white/10 bg-slate-900 p-5">
+              <div className="mb-4 rounded-2xl border border-white/[0.07] bg-slate-900/70 p-4">
 
                 <div className="flex items-center gap-3">
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-950">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-950">
                     <CardIcon />
                   </div>
 
                   <div>
-                    <p className="text-sm font-black">
+                    <p className="text-sm font-bold">
                       کارت واریز
                     </p>
 
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-0.5 text-[10px] text-slate-500">
                       مبلغ را به کارت زیر واریز کن
                     </p>
                   </div>
 
                 </div>
 
-                <div className="mt-5 rounded-2xl bg-slate-800 p-4">
+                <div className="mt-4 rounded-xl bg-slate-800/70 p-3.5">
 
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[10px] text-slate-500">
                     نام صاحب کارت
                   </p>
 
-                  <p className="mt-1 text-base font-black">
+                  <p className="mt-1 text-sm font-black">
                     {DEPOSIT_CARD_OWNER}
                   </p>
 
-                  <p className="mt-4 text-[11px] text-slate-500">
+                  <p className="mt-3 text-[10px] text-slate-500">
                     شماره کارت
                   </p>
 
                   <p
                     dir="ltr"
-                    className="mt-2 text-center text-lg font-black tracking-wider"
+                    className="mt-1.5 text-center text-base font-black tracking-wider"
                   >
                     {DEPOSIT_CARD_NUMBER}
                   </p>
 
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-center">
+                <div className="mt-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.06] px-3.5 py-3">
 
-                  <p className="text-sm font-bold text-amber-200">
+                  <p className="text-xs font-bold text-amber-200">
                     ⏱️ فرصت واریز ۱۵ دقیقه است
                   </p>
 
-                  <p className="mt-2 text-[11px] leading-5 text-amber-300/70">
-                    بعد از ثبت درخواست، لطفاً مبلغ
-                    انتخاب‌شده را حداکثر تا ۱۵ دقیقه
-                    به کارت بالا واریز کن تا درخواستت
-                    در سریع‌ترین زمان بررسی شود.
+                  <p className="mt-1.5 text-[10px] leading-5 text-amber-300/60">
+                    بعد از ثبت درخواست، مبلغ انتخاب‌شده
+                    را حداکثر تا ۱۵ دقیقه به کارت بالا
+                    واریز کن تا درخواستت بررسی شود.
                   </p>
 
                 </div>
@@ -743,20 +739,20 @@ export default function WalletPage() {
               </div>
             )}
 
-            {/* Withdraw cards */}
+            {/* Withdraw - no cards */}
             {action === "withdraw" &&
               cards.length === 0 && (
-                <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-5 text-center">
+                <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.06] p-5 text-center">
 
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-300">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/[0.08] text-amber-300">
                     <CardIcon />
                   </div>
 
-                  <h3 className="mt-4 font-black text-amber-200">
+                  <h3 className="mt-3 text-sm font-black text-amber-200">
                     هنوز کارت بانکی ثبت نکرده‌ای
                   </h3>
 
-                  <p className="mt-2 text-xs leading-5 text-amber-300/70">
+                  <p className="mt-1.5 text-[11px] leading-5 text-amber-300/60">
                     ابتدا از بخش اطلاعات حساب کاربری
                     یک کارت بانکی اضافه کن.
                   </p>
@@ -767,7 +763,7 @@ export default function WalletPage() {
                       (window.location.href =
                         "/profile/account")
                     }
-                    className="mt-5 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-slate-200"
+                    className="mt-4 rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-black text-slate-950 transition hover:bg-white"
                   >
                     افزودن کارت بانکی
                   </button>
@@ -778,13 +774,13 @@ export default function WalletPage() {
             {/* Withdraw card selection */}
             {action === "withdraw" &&
               cards.length > 0 && (
-                <div className="mb-5">
+                <div className="mb-4">
 
-                  <p className="mb-3 text-sm font-bold">
+                  <p className="mb-2.5 text-xs font-bold">
                     کارت مقصد را انتخاب کن
                   </p>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
 
                     {cards.map((card) => {
                       const selected =
@@ -800,20 +796,20 @@ export default function WalletPage() {
                               card.id
                             )
                           }
-                          className={`w-full rounded-3xl border p-5 text-right transition ${
+                          className={`w-full rounded-2xl border p-3.5 text-right transition ${
                             selected
-                              ? "border-white bg-slate-800"
-                              : "border-white/10 bg-slate-900 hover:border-white/20"
+                              ? "border-white/[0.3] bg-slate-800"
+                              : "border-white/[0.07] bg-slate-900/70 hover:border-white/[0.13]"
                           }`}
                         >
 
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3">
 
                             <div
-                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                                 selected
-                                  ? "bg-white text-slate-950"
-                                  : "bg-white/5 text-slate-300"
+                                  ? "bg-slate-100 text-slate-950"
+                                  : "bg-white/[0.04] text-slate-400"
                               }`}
                             >
                               <CardIcon />
@@ -823,14 +819,14 @@ export default function WalletPage() {
 
                               <p
                                 dir="ltr"
-                                className="text-left text-base font-black tracking-wider"
+                                className="text-left text-sm font-black tracking-wider"
                               >
                                 {formatCardNumber(
                                   card.cardNumber
                                 )}
                               </p>
 
-                              <p className="mt-2 text-xs text-slate-500">
+                              <p className="mt-1.5 text-[10px] text-slate-500">
                                 به نام:{" "}
                                 <span className="text-slate-300">
                                   {card.ownerName}
@@ -840,14 +836,14 @@ export default function WalletPage() {
                             </div>
 
                             <div
-                              className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                              className={`flex h-4.5 w-4.5 items-center justify-center rounded-full border ${
                                 selected
                                   ? "border-white bg-white"
-                                  : "border-slate-600"
+                                  : "border-slate-700"
                               }`}
                             >
                               {selected && (
-                                <div className="h-2 w-2 rounded-full bg-slate-950" />
+                                <div className="h-1.5 w-1.5 rounded-full bg-slate-950" />
                               )}
                             </div>
 
@@ -864,9 +860,9 @@ export default function WalletPage() {
             {/* Amount */}
             {(action === "deposit" ||
               cards.length > 0) && (
-              <div className="rounded-3xl border border-white/10 bg-slate-900 p-5">
+              <div className="rounded-2xl border border-white/[0.07] bg-slate-900/70 p-4">
 
-                <label className="mb-3 block text-sm font-bold">
+                <label className="mb-2.5 block text-xs font-bold">
                   مبلغ{" "}
                   {action === "deposit"
                     ? "واریز"
@@ -887,16 +883,16 @@ export default function WalletPage() {
                     }
                     placeholder="مثلاً ۵۰۰۰۰۰"
                     dir="ltr"
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-4 pl-20 text-left text-lg font-bold text-white outline-none placeholder:text-slate-600 focus:border-white"
+                    className="w-full rounded-xl border border-white/[0.07] bg-slate-800/70 px-3.5 py-3.5 pl-16 text-left text-base font-bold text-white outline-none placeholder:text-slate-600 focus:border-white/[0.2]"
                   />
 
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">
                     تومان
                   </span>
 
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
+                <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-600">
 
                   <span>
                     حداقل:{" "}
@@ -915,7 +911,7 @@ export default function WalletPage() {
                 </div>
 
                 {amount && (
-                  <p className="mt-3 text-xs text-slate-500">
+                  <p className="mt-2.5 text-[11px] text-slate-500">
                     مبلغ واردشده:{" "}
                     <span className="font-bold text-slate-300">
                       {formatToman(
@@ -927,9 +923,9 @@ export default function WalletPage() {
                 )}
 
                 {action === "withdraw" && (
-                  <div className="mt-4 rounded-2xl bg-slate-800 px-4 py-3 text-xs text-slate-400">
+                  <div className="mt-3 rounded-xl bg-slate-800/70 px-3.5 py-2.5 text-[11px] text-slate-500">
                     موجودی فعلی:{" "}
-                    <span className="font-bold text-white">
+                    <span className="font-bold text-slate-200">
                       {formatToman(
                         wallet.balance
                       )}{" "}
@@ -952,7 +948,7 @@ export default function WalletPage() {
                       "withdraw" &&
                       !selectedCardId)
                   }
-                  className="mt-5 w-full rounded-2xl bg-white py-4 font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-4 w-full rounded-xl bg-slate-100 py-3.5 text-sm font-black text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   {submitting
                     ? "در حال ثبت درخواست..."
@@ -966,6 +962,19 @@ export default function WalletPage() {
 
           </section>
         )}
+
+        {/* Back */}
+        {action === "none" && (
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-slate-900/60 py-3 text-xs font-bold text-slate-400 transition hover:bg-slate-900 hover:text-white"
+          >
+            <span>→</span>
+            بازگشت به پروفایل
+          </button>
+        )}
+
       </div>
     </main>
   );
