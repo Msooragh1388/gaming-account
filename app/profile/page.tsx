@@ -32,6 +32,12 @@ type Purchase = {
   createdAt: string;
 };
 
+type BankCard = {
+  id: number;
+  cardNumber: string;
+  ownerName: string;
+};
+
 function EyeIcon({ visible }: { visible: boolean }) {
   return (
     <svg
@@ -126,24 +132,103 @@ function CartIcon() {
   );
 }
 
+function UserInfoIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-5 w-5"
+    >
+      <circle
+        cx="12"
+        cy="8"
+        r="3.2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M5.5 20C6.1 16.5 8.2 14.5 12 14.5C15.8 14.5 17.9 16.5 18.5 20"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CardIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-5 w-5"
+    >
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M3 10H21"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M7 15H11"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function ProfilePage() {
   const [mode, setMode] = useState<Mode>("login");
+
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
-  const [showRepeatPassword, setShowRepeatPassword] = useState(false);
+  const [showRepeatPassword, setShowRepeatPassword] =
+    useState(false);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
-  const [savedProducts, setSavedProducts] = useState<Product[]>([]);
+
+  const [savedProducts, setSavedProducts] = useState<Product[]>(
+    []
+  );
   const [loadingSaved, setLoadingSaved] = useState(false);
+
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [loadingPurchases, setLoadingPurchases] = useState(false);
+  const [loadingPurchases, setLoadingPurchases] =
+    useState(false);
+
   const [visibleCredentials, setVisibleCredentials] =
     useState<Record<number, boolean>>({});
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [mobile, setMobile] = useState("");
+
+  const [cards, setCards] = useState<BankCard[]>([]);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [cardSaving, setCardSaving] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     const token = localStorage.getItem("gaming_account_token");
@@ -152,6 +237,7 @@ export default function ProfilePage() {
     if (token && user) {
       try {
         const userData = JSON.parse(user);
+
         setIsLoggedIn(true);
         setUserName(userData.name || "");
       } catch {
@@ -162,8 +248,74 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
+    async function loadProfile() {
+      if (!isLoggedIn) return;
+
+      const token = localStorage.getItem(
+        "gaming_account_token"
+      );
+
+      if (!token) return;
+
+      setProfileLoading(true);
+
+      try {
+        const response = await fetch("/api/profile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            action: "get",
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          console.error(
+            "Profile load error:",
+            data.error
+          );
+          return;
+        }
+
+        setFirstName(data.profile?.firstName || "");
+        setLastName(data.profile?.lastName || "");
+        setMobile(data.profile?.mobile || "");
+
+        setCards(
+          Array.isArray(data.cards)
+            ? data.cards.map((card: any) => ({
+                id: Number(card.id),
+                cardNumber: String(
+                  card.cardNumber || ""
+                ),
+                ownerName: String(
+                  card.ownerName || ""
+                ),
+              }))
+            : []
+        );
+      } catch (error) {
+        console.error(
+          "Profile request error:",
+          error
+        );
+      } finally {
+        setProfileLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
     async function loadSavedProducts() {
-      const saved = localStorage.getItem("gaming_account_saved");
+      const saved = localStorage.getItem(
+        "gaming_account_saved"
+      );
 
       if (!saved) {
         setSavedProducts([]);
@@ -176,7 +328,9 @@ export default function ProfilePage() {
         const parsed = JSON.parse(saved);
 
         if (Array.isArray(parsed)) {
-          savedIds = parsed.map((id: unknown) => Number(id));
+          savedIds = parsed.map((id: unknown) =>
+            Number(id)
+          );
         }
       } catch {
         savedIds = [];
@@ -195,7 +349,10 @@ export default function ProfilePage() {
         .in("id", savedIds);
 
       if (error) {
-        console.error("Saved products error:", error);
+        console.error(
+          "Saved products error:",
+          error
+        );
         setLoadingSaved(false);
         return;
       }
@@ -206,7 +363,10 @@ export default function ProfilePage() {
           savedIds.indexOf(Number(b.id))
       );
 
-      setSavedProducts(sortedProducts as Product[]);
+      setSavedProducts(
+        sortedProducts as Product[]
+      );
+
       setLoadingSaved(false);
     }
 
@@ -220,7 +380,9 @@ export default function ProfilePage() {
     }
 
     async function loadPurchases() {
-      const token = localStorage.getItem("gaming_account_token");
+      const token = localStorage.getItem(
+        "gaming_account_token"
+      );
 
       if (!token) {
         setPurchases([]);
@@ -230,18 +392,24 @@ export default function ProfilePage() {
       setLoadingPurchases(true);
 
       try {
-        const response = await fetch("/api/purchases", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }),
-        });
+        const response = await fetch(
+          "/api/purchases",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token }),
+          }
+        );
 
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          console.error("Purchases error:", data.error);
+          console.error(
+            "Purchases error:",
+            data.error
+          );
           setPurchases([]);
           return;
         }
@@ -252,7 +420,11 @@ export default function ProfilePage() {
             : []
         );
       } catch (error) {
-        console.error("Purchases request error:", error);
+        console.error(
+          "Purchases request error:",
+          error
+        );
+
         setPurchases([]);
       } finally {
         setLoadingPurchases(false);
@@ -263,18 +435,25 @@ export default function ProfilePage() {
   }, [isLoggedIn]);
 
   function removeSaved(id: number) {
-    const saved = localStorage.getItem("gaming_account_saved");
+    const saved = localStorage.getItem(
+      "gaming_account_saved"
+    );
+
     let savedIds: number[] = [];
 
     try {
       savedIds = saved
-        ? JSON.parse(saved).map((item: unknown) => Number(item))
+        ? JSON.parse(saved).map((item: unknown) =>
+            Number(item)
+          )
         : [];
     } catch {
       savedIds = [];
     }
 
-    const newSavedIds = savedIds.filter((item) => item !== id);
+    const newSavedIds = savedIds.filter(
+      (item) => item !== id
+    );
 
     localStorage.setItem(
       "gaming_account_saved",
@@ -282,13 +461,19 @@ export default function ProfilePage() {
     );
 
     setSavedProducts((current) =>
-      current.filter((product) => product.id !== id)
+      current.filter(
+        (product) => product.id !== id
+      )
     );
 
-    setMessage("اکانت از ذخیره‌شده‌ها حذف شد");
+    setMessage(
+      "اکانت از ذخیره‌شده‌ها حذف شد"
+    );
   }
 
-  function toggleCredentials(purchaseId: number) {
+  function toggleCredentials(
+    purchaseId: number
+  ) {
     setVisibleCredentials((current) => ({
       ...current,
       [purchaseId]: !current[purchaseId],
@@ -296,27 +481,337 @@ export default function ProfilePage() {
   }
 
   function formatPrice(price: number) {
-    return new Intl.NumberFormat("fa-IR").format(price);
+    return new Intl.NumberFormat(
+      "fa-IR"
+    ).format(price);
   }
 
   function formatDate(date: string) {
     try {
-      return new Intl.DateTimeFormat("fa-IR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(new Date(date));
+      return new Intl.DateTimeFormat(
+        "fa-IR",
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }
+      ).format(new Date(date));
     } catch {
       return "";
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function formatCardNumber(
+    cardNumber: string
+  ) {
+    const clean = cardNumber.replace(
+      /\s/g,
+      ""
+    );
+
+    if (clean.length !== 16) {
+      return cardNumber;
+    }
+
+    return `${clean.slice(0, 4)} **** **** ${clean.slice(
+      12
+    )}`;
+  }
+
+  function addCard() {
+    setCards((current) => [
+      ...current,
+      {
+        id: -Date.now(),
+        cardNumber: "",
+        ownerName: "",
+      },
+    ]);
+  }
+
+  function updateCard(
+    id: number,
+    field:
+      | "cardNumber"
+      | "ownerName",
+    value: string
+  ) {
+    setCards((current) =>
+      current.map((card) =>
+        card.id === id
+          ? {
+              ...card,
+              [field]: value,
+            }
+          : card
+      )
+    );
+  }
+
+  async function deleteCard(
+    card: BankCard
+  ) {
+    const isNewCard = card.id < 0;
+
+    if (isNewCard) {
+      setCards((current) =>
+        current.filter(
+          (item) => item.id !== card.id
+        )
+      );
+      return;
+    }
+
+    const token = localStorage.getItem(
+      "gaming_account_token"
+    );
+
+    if (!token) {
+      setMessage(
+        "نشست کاربر معتبر نیست. دوباره وارد شو."
+      );
+      return;
+    }
+
+    setCardSaving(card.id);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        "/api/profile",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            action: "delete_card",
+            cardId: card.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setMessage(
+          data.error ||
+            "حذف کارت ناموفق بود."
+        );
+        return;
+      }
+
+      setCards((current) =>
+        current.filter(
+          (item) => item.id !== card.id
+        )
+      );
+
+      setMessage(
+        "شماره کارت با موفقیت حذف شد."
+      );
+    } catch (error) {
+      console.error(
+        "Delete card error:",
+        error
+      );
+
+      setMessage(
+        "خطایی در حذف کارت رخ داد."
+      );
+    } finally {
+      setCardSaving(null);
+    }
+  }
+
+  async function saveProfile() {
+    setMessage("");
+
+    if (!firstName.trim()) {
+      setMessage("نام را وارد کن.");
+      return;
+    }
+
+    if (!lastName.trim()) {
+      setMessage(
+        "نام خانوادگی را وارد کن."
+      );
+      return;
+    }
+
+    if (!mobile.trim()) {
+      setMessage(
+        "شماره موبایل را وارد کن."
+      );
+      return;
+    }
+
+    const token = localStorage.getItem(
+      "gaming_account_token"
+    );
+
+    if (!token) {
+      setMessage(
+        "نشست کاربر معتبر نیست. دوباره وارد شو."
+      );
+      return;
+    }
+
+    setProfileSaving(true);
+
+    try {
+      const response = await fetch(
+        "/api/profile",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            action: "save_profile",
+            firstName,
+            lastName,
+            mobile,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setMessage(
+          data.error ||
+            "ذخیره اطلاعات ناموفق بود."
+        );
+        return;
+      }
+
+      setMessage(
+        "اطلاعات حساب با موفقیت ذخیره شد."
+      );
+    } catch (error) {
+      console.error(
+        "Save profile error:",
+        error
+      );
+
+      setMessage(
+        "خطایی در ارتباط با سرور رخ داد."
+      );
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function saveCard(
+    card: BankCard
+  ) {
+    const cardNumber = card.cardNumber
+      .replace(/\s/g, "")
+      .trim();
+
+    const ownerName =
+      card.ownerName.trim();
+
+    if (!/^\d{16}$/.test(cardNumber)) {
+      setMessage(
+        "شماره کارت باید دقیقاً ۱۶ رقم باشد."
+      );
+      return;
+    }
+
+    if (!ownerName) {
+      setMessage(
+        "نام مالک کارت را وارد کن."
+      );
+      return;
+    }
+
+    const token = localStorage.getItem(
+      "gaming_account_token"
+    );
+
+    if (!token) {
+      setMessage(
+        "نشست کاربر معتبر نیست. دوباره وارد شو."
+      );
+      return;
+    }
+
+    setCardSaving(card.id);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        "/api/profile",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            action: "add_card",
+            cardNumber,
+            ownerName,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setMessage(
+          data.error ||
+            "ثبت کارت ناموفق بود."
+        );
+        return;
+      }
+
+      setCards((current) =>
+        current.map((item) =>
+          item.id === card.id
+            ? {
+                id: Number(data.cardId),
+                cardNumber,
+                ownerName,
+              }
+            : item
+        )
+      );
+
+      setMessage(
+        "شماره کارت با موفقیت ثبت شد."
+      );
+    } catch (error) {
+      console.error(
+        "Save card error:",
+        error
+      );
+
+      setMessage(
+        "خطایی در ثبت کارت رخ داد."
+      );
+    } finally {
+      setCardSaving(null);
+    }
+  }
+
+  async function handleSubmit(
+    e: React.FormEvent
+  ) {
     e.preventDefault();
     setMessage("");
 
-    if (mode === "register" && password !== repeatPassword) {
-      setMessage("رمز عبور و تکرار رمز یکسان نیستند.");
+    if (
+      mode === "register" &&
+      password !== repeatPassword
+    ) {
+      setMessage(
+        "رمز عبور و تکرار رمز یکسان نیستند."
+      );
       return;
     }
 
@@ -330,25 +825,43 @@ export default function ProfilePage() {
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify(
             mode === "register"
-              ? { name, identifier, password }
-              : { identifier, password }
+              ? {
+                  name,
+                  identifier,
+                  password,
+                }
+              : {
+                  identifier,
+                  password,
+                }
           ),
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || !data.success) {
-        setMessage(data.error || "عملیات ناموفق بود.");
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        setMessage(
+          data.error ||
+            "عملیات ناموفق بود."
+        );
         return;
       }
 
       if (mode === "login") {
-        localStorage.setItem("gaming_account_token", data.token);
+        localStorage.setItem(
+          "gaming_account_token",
+          data.token
+        );
 
         localStorage.setItem(
           "gaming_account_user",
@@ -360,7 +873,9 @@ export default function ProfilePage() {
 
         setIsLoggedIn(true);
         setUserName(data.name);
-        setMessage(`خوش آمدی ${data.name}`);
+        setMessage(
+          `خوش آمدی ${data.name}`
+        );
         setPassword("");
       } else {
         setMessage(
@@ -372,20 +887,33 @@ export default function ProfilePage() {
         setRepeatPassword("");
       }
     } catch {
-      setMessage("خطایی در ارتباط با سرور رخ داد.");
+      setMessage(
+        "خطایی در ارتباط با سرور رخ داد."
+      );
     } finally {
       setLoading(false);
     }
   }
 
   function logout() {
-    localStorage.removeItem("gaming_account_token");
-    localStorage.removeItem("gaming_account_user");
+    localStorage.removeItem(
+      "gaming_account_token"
+    );
+
+    localStorage.removeItem(
+      "gaming_account_user"
+    );
 
     setIsLoggedIn(false);
     setUserName("");
     setPurchases([]);
-    setMessage("از حساب خارج شدی");
+    setCards([]);
+    setFirstName("");
+    setLastName("");
+    setMobile("");
+    setMessage(
+      "از حساب خارج شدی"
+    );
   }
 
   if (isLoggedIn) {
@@ -399,7 +927,8 @@ export default function ProfilePage() {
           <div className="mb-8 flex items-center justify-between gap-3">
             <button
               onClick={() => {
-                window.location.href = "/";
+                window.location.href =
+                  "/";
               }}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-lg transition hover:bg-white/10"
               aria-label="بازگشت"
@@ -410,30 +939,13 @@ export default function ProfilePage() {
             <div className="text-center">
               <div className="flex justify-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-950">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-7 w-7"
-                  >
-                    <circle
-                      cx="12"
-                      cy="8"
-                      r="3.2"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                    />
-                    <path
-                      d="M5.5 20C6.1 16.5 8.2 14.5 12 14.5C15.8 14.5 17.9 16.5 18.5 20"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <UserInfoIcon />
                 </div>
               </div>
 
-              <h1 className="mt-3 text-xl font-black">پروفایل</h1>
+              <h1 className="mt-3 text-xl font-black">
+                پروفایل
+              </h1>
             </div>
 
             <div className="w-10" />
@@ -443,30 +955,14 @@ export default function ProfilePage() {
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-xl">
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                >
-                  <circle
-                    cx="12"
-                    cy="8"
-                    r="3.2"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  />
-                  <path
-                    d="M5.5 20C6.1 16.5 8.2 14.5 12 14.5C15.8 14.5 17.9 16.5 18.5 20"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <UserInfoIcon />
               </div>
 
               <div className="min-w-0">
-                <p className="text-xs text-slate-500">خوش آمدی</p>
+                <p className="text-xs text-slate-500">
+                  خوش آمدی
+                </p>
+
                 <h2 className="mt-1 truncate text-xl font-black">
                   {userName}
                 </h2>
@@ -481,12 +977,300 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Saved products */}
+          {/* Account information */}
           <section className="mt-6">
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <UserInfoIcon />
+
+                <h2 className="text-xl font-black">
+                  اطلاعات حساب کاربری
+                </h2>
+              </div>
+
+              <p className="mt-1 text-xs text-slate-500">
+                اطلاعات شخصی و بانکی خودت را ثبت کن
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-xl">
+              {profileLoading ? (
+                <div className="py-10 text-center text-sm text-slate-400">
+                  در حال دریافت اطلاعات حساب...
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-bold">
+                        نام
+                      </label>
+
+                      <input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) =>
+                          setFirstName(
+                            e.target.value
+                          )
+                        }
+                        placeholder="نام"
+                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-bold">
+                        نام خانوادگی
+                      </label>
+
+                      <input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) =>
+                          setLastName(
+                            e.target.value
+                          )
+                        }
+                        placeholder="نام خانوادگی"
+                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-bold">
+                      شماره موبایل
+                    </label>
+
+                    <input
+                      type="tel"
+                      value={mobile}
+                      onChange={(e) =>
+                        setMobile(
+                          e.target.value
+                        )
+                      }
+                      placeholder="مثلاً 09123456789"
+                      dir="ltr"
+                      className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
+                    />
+                  </div>
+
+                  {/* Cards */}
+                  <div className="mt-6 border-t border-white/10 pt-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <CardIcon />
+
+                          <h3 className="text-base font-black">
+                            کارت‌های بانکی
+                          </h3>
+                        </div>
+
+                        <p className="mt-2 text-xs leading-6 text-slate-400">
+                          ⚠️ حتماً فقط واریز و برداشت با این شماره کارت‌های ثبت‌شده انجام می‌شود.
+                        </p>
+                      </div>
+
+                      <span className="shrink-0 rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-400">
+                        {cards.length} کارت
+                      </span>
+                    </div>
+
+                    {cards.length === 0 ? (
+                      <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-center">
+                        <p className="text-sm text-slate-400">
+                          هنوز شماره کارتی ثبت نکرده‌ای.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-4 space-y-4">
+                        {cards.map(
+                          (card, index) => {
+                            const isSaved =
+                              card.id > 0;
+
+                            const isSaving =
+                              cardSaving ===
+                              card.id;
+
+                            return (
+                              <div
+                                key={card.id}
+                                className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+                              >
+                                <div className="mb-4 flex items-center justify-between">
+                                  <p className="text-sm font-bold">
+                                    کارت{" "}
+                                    {index + 1}
+                                  </p>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      deleteCard(
+                                        card
+                                      )
+                                    }
+                                    disabled={
+                                      isSaving
+                                    }
+                                    className="rounded-xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+                                  >
+                                    {isSaving
+                                      ? "لطفاً صبر کن..."
+                                      : "حذف کارت"}
+                                  </button>
+                                </div>
+
+                                {isSaved ? (
+                                  <>
+                                    <div>
+                                      <p className="mb-1.5 text-xs text-slate-500">
+                                        شماره کارت
+                                      </p>
+
+                                      <div
+                                        dir="ltr"
+                                        className="rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-center text-sm font-bold tracking-wider text-slate-200"
+                                      >
+                                        {formatCardNumber(
+                                          card.cardNumber
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                      <p className="mb-1.5 text-xs text-slate-500">
+                                        نام مالک کارت
+                                      </p>
+
+                                      <div className="rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-sm font-medium text-slate-200">
+                                        {
+                                          card.ownerName
+                                        }
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <label className="mb-2 block text-xs font-bold text-slate-400">
+                                        شماره کارت
+                                      </label>
+
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={
+                                          19
+                                        }
+                                        value={
+                                          card.cardNumber
+                                        }
+                                        onChange={(
+                                          e
+                                        ) => {
+                                          const value =
+                                            e.target.value.replace(
+                                              /[^\d\s]/g,
+                                              ""
+                                            );
+
+                                          updateCard(
+                                            card.id,
+                                            "cardNumber",
+                                            value
+                                          );
+                                        }}
+                                        placeholder="6037 0000 0000 0000"
+                                        dir="ltr"
+                                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-white"
+                                      />
+                                    </div>
+
+                                    <div className="mt-4">
+                                      <label className="mb-2 block text-xs font-bold text-slate-400">
+                                        نام مالک کارت
+                                      </label>
+
+                                      <input
+                                        type="text"
+                                        value={
+                                          card.ownerName
+                                        }
+                                        onChange={(
+                                          e
+                                        ) =>
+                                          updateCard(
+                                            card.id,
+                                            "ownerName",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="نام و نام خانوادگی مالک کارت"
+                                        className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-white"
+                                      />
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        saveCard(
+                                          card
+                                        )
+                                      }
+                                      disabled={
+                                        isSaving
+                                      }
+                                      className="mt-4 w-full rounded-2xl bg-white py-3 text-sm font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {isSaving
+                                        ? "در حال ثبت کارت..."
+                                        : "ثبت این کارت"}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={addCard}
+                      className="mt-4 w-full rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-3.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
+                    >
+                      + افزودن شماره کارت
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={saveProfile}
+                    disabled={profileSaving}
+                    className="mt-6 w-full rounded-2xl bg-white py-3.5 text-sm font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {profileSaving
+                      ? "در حال ذخیره..."
+                      : "ذخیره اطلاعات شخصی"}
+                  </button>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Saved products */}
+          <section className="mt-8">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <BookmarkIcon saved={true} />
+
                   <h2 className="text-xl font-black">
                     اکانت‌های ذخیره‌شده
                   </h2>
@@ -507,26 +1291,16 @@ export default function ProfilePage() {
                 <div className="flex justify-center text-slate-400">
                   <BookmarkIcon saved={true} />
                 </div>
+
                 <p className="mt-3 text-sm text-slate-400">
                   در حال دریافت ذخیره‌شده‌ها...
                 </p>
               </div>
-            ) : savedProducts.length === 0 ? (
+            ) : savedProducts.length ===
+              0 ? (
               <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
                 <div className="flex justify-center text-slate-500">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-12 w-12"
-                  >
-                    <path
-                      d="M6 4.75C6 3.7835 6.7835 3 7.75 3H16.25C17.2165 3 18 3.7835 18 4.75V21L12 17.5L6 21V4.75Z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <BookmarkIcon saved={false} />
                 </div>
 
                 <h3 className="mt-4 font-bold">
@@ -539,7 +1313,8 @@ export default function ProfilePage() {
 
                 <button
                   onClick={() => {
-                    window.location.href = "/";
+                    window.location.href =
+                      "/";
                   }}
                   className="mt-5 rounded-2xl bg-white px-6 py-3 text-sm font-bold text-slate-950"
                 >
@@ -548,70 +1323,84 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {savedProducts.map((product) => {
-                  const image =
-                    product.images?.[0] ||
-                    "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
+                {savedProducts.map(
+                  (product) => {
+                    const image =
+                      product.images?.[0] ||
+                      "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
 
-                  return (
-                    <article
-                      key={product.id}
-                      className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]"
-                    >
-                      <div className="relative aspect-square overflow-hidden">
-                        <img
-                          src={image}
-                          alt={product.title}
-                          className="h-full w-full object-cover"
-                        />
+                    return (
+                      <article
+                        key={product.id}
+                        className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]"
+                      >
+                        <div className="relative aspect-square overflow-hidden">
+                          <img
+                            src={image}
+                            alt={
+                              product.title
+                            }
+                            className="h-full w-full object-cover"
+                          />
 
-                        {product.isSold && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-                            <span className="rounded-2xl bg-red-500/20 px-4 py-2 text-xs font-black text-red-300">
-                              فروخته شد
-                            </span>
-                          </div>
-                        )}
+                          {product.isSold && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+                              <span className="rounded-2xl bg-red-500/20 px-4 py-2 text-xs font-black text-red-300">
+                                فروخته شد
+                              </span>
+                            </div>
+                          )}
 
-                        <button
-                          onClick={() => removeSaved(product.id)}
-                          className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition hover:scale-110 hover:bg-black/75"
-                          aria-label="حذف از ذخیره‌شده‌ها"
-                        >
-                          <BookmarkIcon saved={true} />
-                        </button>
-                      </div>
-
-                      <div className="p-3">
-                        <p className="text-[10px] text-indigo-300">
-                          {product.game}
-                        </p>
-
-                        <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-5">
-                          {product.title}
-                        </h3>
-
-                        <div className="mt-3">
-                          <p className="text-base font-black">
-                            {formatPrice(product.price)}
-                            <span className="mr-1 text-[10px] font-normal text-slate-400">
-                              تومان
-                            </span>
-                          </p>
+                          <button
+                            onClick={() =>
+                              removeSaved(
+                                product.id
+                              )
+                            }
+                            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition hover:scale-110 hover:bg-black/75"
+                            aria-label="حذف از ذخیره‌شده‌ها"
+                          >
+                            <BookmarkIcon
+                              saved={true}
+                            />
+                          </button>
                         </div>
 
-                        <button
-                          onClick={() => {
-                            window.location.href = "/";
-                          }}
-                          className="mt-3 w-full rounded-xl bg-white py-2.5 text-xs font-bold text-slate-950"
-                        >
-                          مشاهده اکانت
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
+                        <div className="p-3">
+                          <p className="text-[10px] text-indigo-300">
+                            {product.game}
+                          </p>
+
+                          <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-5">
+                            {product.title}
+                          </h3>
+
+                          <div className="mt-3">
+                            <p className="text-base font-black">
+                              {formatPrice(
+                                product.price
+                              )}
+
+                              <span className="mr-1 text-[10px] font-normal text-slate-400">
+                                تومان
+                              </span>
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              window.location.href =
+                                "/";
+                            }}
+                            className="mt-3 w-full rounded-xl bg-white py-2.5 text-xs font-bold text-slate-950"
+                          >
+                            مشاهده اکانت
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  }
+                )}
               </div>
             )}
           </section>
@@ -622,6 +1411,7 @@ export default function ProfilePage() {
               <div>
                 <div className="flex items-center gap-2">
                   <CartIcon />
+
                   <h2 className="text-xl font-black">
                     اکانت‌های خریداری‌شده
                   </h2>
@@ -642,11 +1432,13 @@ export default function ProfilePage() {
                 <div className="flex justify-center text-slate-400">
                   <CartIcon />
                 </div>
+
                 <p className="mt-3 text-sm text-slate-400">
                   در حال دریافت خریدها...
                 </p>
               </div>
-            ) : purchases.length === 0 ? (
+            ) : purchases.length ===
+              0 ? (
               <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
                 <div className="flex justify-center text-slate-500">
                   <CartIcon />
@@ -662,7 +1454,8 @@ export default function ProfilePage() {
 
                 <button
                   onClick={() => {
-                    window.location.href = "/";
+                    window.location.href =
+                      "/";
                   }}
                   className="mt-5 rounded-2xl bg-white px-6 py-3 text-sm font-bold text-slate-950"
                 >
@@ -671,102 +1464,85 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {purchases.map((purchase) => {
-                  const isVisible =
-                    !!visibleCredentials[purchase.id];
+                {purchases.map(
+                  (purchase) => {
+                    const isVisible =
+                      !!visibleCredentials[
+                        purchase.id
+                      ];
 
-                  return (
-                    <article
-                      key={purchase.id}
-                      className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-xl"
-                    >
-                      <div className="p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-bold text-indigo-300">
-                              {purchase.game}
-                            </p>
-
-                            <h3 className="mt-1 text-base font-black leading-6">
-                              {purchase.productTitle}
-                            </h3>
-
-                            <p className="mt-1 text-xs text-slate-500">
-                              خرید در {formatDate(purchase.createdAt)}
-                            </p>
-                          </div>
-
-                          <div className="shrink-0 rounded-xl bg-white/5 px-3 py-2 text-xs font-bold text-slate-300">
-                            {formatPrice(purchase.price)} تومان
-                          </div>
-                        </div>
-
-                        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-                          <div className="mb-4 flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-bold">
-                                اطلاعات ورود
+                    return (
+                      <article
+                        key={purchase.id}
+                        className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-xl"
+                      >
+                        <div className="p-5">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-bold text-indigo-300">
+                                {purchase.game}
                               </p>
 
-                              <p className="mt-1 text-[11px] text-slate-500">
-                                برای امنیت، اطلاعات به‌صورت مخفی نمایش داده می‌شوند.
+                              <h3 className="mt-1 text-base font-black leading-6">
+                                {
+                                  purchase.productTitle
+                                }
+                              </h3>
+
+                              <p className="mt-1 text-xs text-slate-500">
+                                خرید در{" "}
+                                {formatDate(
+                                  purchase.createdAt
+                                )}
                               </p>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toggleCredentials(purchase.id)
-                              }
-                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-                              aria-label={
-                                isVisible
-                                  ? "مخفی کردن اطلاعات"
-                                  : "نمایش اطلاعات"
-                              }
-                            >
-                              <EyeIcon visible={isVisible} />
-                            </button>
+                            <div className="shrink-0 rounded-xl bg-white/5 px-3 py-2 text-xs font-bold text-slate-300">
+                              {formatPrice(
+                                purchase.price
+                              )}{" "}
+                              تومان
+                            </div>
                           </div>
 
-                          <div className="space-y-3">
-                            {/* Username */}
-                            <div>
-                              <p className="mb-1.5 text-[11px] text-slate-500">
-                                ایمیل / نام کاربری
-                              </p>
+                          <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-bold">
+                                  اطلاعات ورود
+                                </p>
 
-                              <div
-                                dir="ltr"
-                                className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
-                              >
-                                {isVisible
-                                  ? purchase.accountUsername
-                                  : "••••••••••••••••"}
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                  برای امنیت، اطلاعات به‌صورت مخفی نمایش داده می‌شوند.
+                                </p>
                               </div>
-                            </div>
 
-                            {/* Main password */}
-                            <div>
-                              <p className="mb-1.5 text-[11px] text-slate-500">
-                                رمز عبور
-                              </p>
-
-                              <div
-                                dir="ltr"
-                                className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleCredentials(
+                                    purchase.id
+                                  )
+                                }
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                                aria-label={
+                                  isVisible
+                                    ? "مخفی کردن اطلاعات"
+                                    : "نمایش اطلاعات"
+                                }
                               >
-                                {isVisible
-                                  ? purchase.accountPassword
-                                  : "••••••••••••••••"}
-                              </div>
+                                <EyeIcon
+                                  visible={
+                                    isVisible
+                                  }
+                                />
+                              </button>
                             </div>
 
-                            {/* Backup password 1 */}
-                            {purchase.backupPassword1 && (
+                            <div className="space-y-3">
                               <div>
                                 <p className="mb-1.5 text-[11px] text-slate-500">
-                                  بکاپ پسورد اول
+                                  ایمیل / نام کاربری
                                 </p>
 
                                 <div
@@ -774,17 +1550,14 @@ export default function ProfilePage() {
                                   className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
                                 >
                                   {isVisible
-                                    ? purchase.backupPassword1
+                                    ? purchase.accountUsername
                                     : "••••••••••••••••"}
                                 </div>
                               </div>
-                            )}
 
-                            {/* Backup password 2 */}
-                            {purchase.backupPassword2 && (
                               <div>
                                 <p className="mb-1.5 text-[11px] text-slate-500">
-                                  بکاپ پسورد دوم
+                                  رمز عبور
                                 </p>
 
                                 <div
@@ -792,17 +1565,51 @@ export default function ProfilePage() {
                                   className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
                                 >
                                   {isVisible
-                                    ? purchase.backupPassword2
+                                    ? purchase.accountPassword
                                     : "••••••••••••••••"}
                                 </div>
                               </div>
-                            )}
+
+                              {purchase.backupPassword1 && (
+                                <div>
+                                  <p className="mb-1.5 text-[11px] text-slate-500">
+                                    بکاپ پسورد اول
+                                  </p>
+
+                                  <div
+                                    dir="ltr"
+                                    className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
+                                  >
+                                    {isVisible
+                                      ? purchase.backupPassword1
+                                      : "••••••••••••••••"}
+                                  </div>
+                                </div>
+                              )}
+
+                              {purchase.backupPassword2 && (
+                                <div>
+                                  <p className="mb-1.5 text-[11px] text-slate-500">
+                                    بکاپ پسورد دوم
+                                  </p>
+
+                                  <div
+                                    dir="ltr"
+                                    className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-200"
+                                  >
+                                    {isVisible
+                                      ? purchase.backupPassword2
+                                      : "••••••••••••••••"}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                      </article>
+                    );
+                  }
+                )}
               </div>
             )}
           </section>
@@ -826,31 +1633,14 @@ export default function ProfilePage() {
         <div className="mb-8 text-center">
           <div className="mb-3 flex justify-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-slate-950">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-9 w-9"
-              >
-                <circle
-                  cx="12"
-                  cy="8"
-                  r="3.2"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                />
-                <path
-                  d="M5.5 20C6.1 16.5 8.2 14.5 12 14.5C15.8 14.5 17.9 16.5 18.5 20"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <UserInfoIcon />
             </div>
           </div>
 
           <h1 className="text-2xl font-black">
-            {mode === "login" ? "ورود به حساب" : "ساخت حساب"}
+            {mode === "login"
+              ? "ورود به حساب"
+              : "ساخت حساب"}
           </h1>
 
           <p className="mt-2 text-sm text-slate-400">
@@ -893,7 +1683,10 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4"
+          >
             {mode === "register" && (
               <div>
                 <label className="mb-2 block text-sm font-bold">
@@ -903,7 +1696,9 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) =>
+                    setName(e.target.value)
+                  }
                   placeholder="مثلاً محمد سراغی"
                   className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
                 />
@@ -918,7 +1713,11 @@ export default function ProfilePage() {
               <input
                 type="text"
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) =>
+                  setIdentifier(
+                    e.target.value
+                  )
+                }
                 placeholder="ایمیل یا شماره موبایل"
                 dir="ltr"
                 className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
@@ -932,9 +1731,17 @@ export default function ProfilePage() {
 
               <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) =>
+                    setPassword(
+                      e.target.value
+                    )
+                  }
                   placeholder="حداقل ۶ کاراکتر"
                   dir="ltr"
                   className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 pl-12 text-white outline-none placeholder:text-slate-500 focus:border-white"
@@ -943,7 +1750,10 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setShowPassword((current) => !current)
+                    setShowPassword(
+                      (current) =>
+                        !current
+                    )
                   }
                   className="absolute left-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-slate-400 transition hover:text-white"
                   aria-label={
@@ -952,7 +1762,11 @@ export default function ProfilePage() {
                       : "نمایش رمز"
                   }
                 >
-                  <EyeIcon visible={showPassword} />
+                  <EyeIcon
+                    visible={
+                      showPassword
+                    }
+                  />
                 </button>
               </div>
             </div>
@@ -965,10 +1779,18 @@ export default function ProfilePage() {
 
                 <div className="relative">
                   <input
-                    type={showRepeatPassword ? "text" : "password"}
-                    value={repeatPassword}
+                    type={
+                      showRepeatPassword
+                        ? "text"
+                        : "password"
+                    }
+                    value={
+                      repeatPassword
+                    }
                     onChange={(e) =>
-                      setRepeatPassword(e.target.value)
+                      setRepeatPassword(
+                        e.target.value
+                      )
                     }
                     placeholder="رمز عبور را دوباره وارد کن"
                     dir="ltr"
@@ -979,7 +1801,8 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() =>
                       setShowRepeatPassword(
-                        (current) => !current
+                        (current) =>
+                          !current
                       )
                     }
                     className="absolute left-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-slate-400 transition hover:text-white"
@@ -989,7 +1812,11 @@ export default function ProfilePage() {
                         : "نمایش رمز"
                     }
                   >
-                    <EyeIcon visible={showRepeatPassword} />
+                    <EyeIcon
+                      visible={
+                        showRepeatPassword
+                      }
+                    />
                   </button>
                 </div>
               </div>
@@ -1017,7 +1844,8 @@ export default function ProfilePage() {
 
         <button
           onClick={() => {
-            window.location.href = "/";
+            window.location.href =
+              "/";
           }}
           className="mt-5 w-full text-center text-sm text-slate-500 transition hover:text-white"
         >
