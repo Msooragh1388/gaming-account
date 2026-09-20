@@ -40,12 +40,31 @@ type FullProduct = Product & {
   backupPassword2: string | null;
 };
 
+type WalletTransaction = {
+  id: number;
+  userId: number;
+  type: "deposit" | "withdraw";
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  cardId: number | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  firstName: string | null;
+  lastName: string | null;
+  mobile: string | null;
+  cardNumber: string | null;
+  cardOwnerName: string | null;
+};
+
 export default function AdminPage() {
   const router = useRouter();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const [purchaseCount, setPurchaseCount] = useState(0);
+  const [transactionCount, setTransactionCount] =
+    useState(0);
 
   const [loadingProducts, setLoadingProducts] =
     useState(true);
@@ -209,21 +228,72 @@ export default function AdminPage() {
   // LOAD PURCHASE COUNT
   // =========================================
 
- async function loadPurchaseCount() {
-  const { data, error } = await supabase.rpc(
-    "get_admin_purchases"
-  );
-
-  if (error) {
-    console.error(
-      "get_admin_purchases error:",
-      error
+  async function loadPurchaseCount() {
+    const { data, error } = await supabase.rpc(
+      "get_admin_purchases"
     );
-    return;
+
+    if (error) {
+      console.error(
+        "get_admin_purchases error:",
+        error
+      );
+      return;
+    }
+
+    setPurchaseCount(
+      Array.isArray(data) ? data.length : 0
+    );
   }
 
-  setPurchaseCount(Array.isArray(data) ? data.length : 0);
-}
+  // =========================================
+  // LOAD PENDING TRANSACTION COUNT
+  // =========================================
+
+  async function loadTransactionCount() {
+    try {
+      const response = await fetch(
+        "/api/admin/transactions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "get",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error(
+          "Admin transactions error:",
+          data?.error
+        );
+        return;
+      }
+
+      const transactions: WalletTransaction[] =
+        Array.isArray(data?.transactions)
+          ? data.transactions
+          : [];
+
+      const pendingCount =
+        transactions.filter(
+          (transaction) =>
+            transaction.status === "pending"
+        ).length;
+
+      setTransactionCount(pendingCount);
+    } catch (error) {
+      console.error(
+        "loadTransactionCount error:",
+        error
+      );
+    }
+  }
 
   // =========================================
   // LOAD ALL DATA
@@ -233,6 +303,7 @@ export default function AdminPage() {
     loadGames();
     loadProducts();
     loadPurchaseCount();
+    loadTransactionCount();
   }, []);
 
   // =========================================
@@ -335,9 +406,11 @@ export default function AdminPage() {
     setAccountPassword(
       fullProduct.accountPassword || ""
     );
+
     setBackupPassword1(
       fullProduct.backupPassword1 || ""
     );
+
     setBackupPassword2(
       fullProduct.backupPassword2 || ""
     );
@@ -1136,7 +1209,9 @@ export default function AdminPage() {
 
         {/* STATS */}
 
-        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-6">
+
+          {/* ALL ACCOUNTS */}
 
           <button
             type="button"
@@ -1156,6 +1231,8 @@ export default function AdminPage() {
             </p>
           </button>
 
+          {/* AVAILABLE ACCOUNTS */}
+
           <button
             type="button"
             onClick={() =>
@@ -1173,6 +1250,8 @@ export default function AdminPage() {
               {availableCount}
             </p>
           </button>
+
+          {/* SOLD */}
 
           <button
             type="button"
@@ -1192,6 +1271,8 @@ export default function AdminPage() {
             </p>
           </button>
 
+          {/* GAMES */}
+
           <button
             type="button"
             onClick={() =>
@@ -1208,6 +1289,8 @@ export default function AdminPage() {
             </p>
           </button>
 
+          {/* BUYERS */}
+
           <button
             type="button"
             onClick={() =>
@@ -1222,6 +1305,30 @@ export default function AdminPage() {
             <p className="mt-2 text-3xl font-black">
               {purchaseCount}
             </p>
+          </button>
+
+          {/* TRANSACTIONS */}
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/admin/transactions")
+            }
+            className="rounded-3xl border border-white/10 bg-white/5 p-5 text-right transition hover:bg-white/10 active:scale-[0.99]"
+          >
+            <p className="text-sm text-zinc-400">
+              تراکنش‌ها
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {transactionCount}
+            </p>
+
+            {transactionCount > 0 && (
+              <p className="mt-1 text-xs text-yellow-400">
+                در انتظار بررسی
+              </p>
+            )}
           </button>
 
         </div>
@@ -1555,10 +1662,13 @@ export default function AdminPage() {
                   <label className="mb-2 block text-sm font-bold">
                     رمز بکاپ اول
                   </label>
+
                   <input
                     value={backupPassword1}
                     onChange={(event) =>
-                      setBackupPassword1(event.target.value)
+                      setBackupPassword1(
+                        event.target.value
+                      )
                     }
                     type="text"
                     autoComplete="off"
@@ -1566,14 +1676,18 @@ export default function AdminPage() {
                     className="w-full min-w-0 rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none focus:border-white/30"
                   />
                 </div>
+
                 <div>
                   <label className="mb-2 block text-sm font-bold">
                     رمز بکاپ دوم
                   </label>
+
                   <input
                     value={backupPassword2}
                     onChange={(event) =>
-                      setBackupPassword2(event.target.value)
+                      setBackupPassword2(
+                        event.target.value
+                      )
                     }
                     type="text"
                     autoComplete="off"

@@ -164,6 +164,44 @@ function WalletIcon() {
   );
 }
 
+function TransactionIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-6 w-6"
+    >
+      <path
+        d="M7 7H19"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 4L19 7L16 10"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M17 17H5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 14L5 17L8 20"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ArrowIcon() {
   return (
     <svg
@@ -463,7 +501,7 @@ export default function ProfilePage() {
 
             <button
               onClick={logout}
-              className="mt-5 w-full rounded-2xl border border-red-500/20 bg-red-500/10 py-3 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
+              className="mt-5 w-full rounded-xl border border-red-500/20 bg-red-500/10 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
             >
               خروج از حساب
             </button>
@@ -481,43 +519,7 @@ export default function ProfilePage() {
               </p>
             </div>
 
-            <div className="space-y-3">
-
-              {/* Wallet */}
-              <button
-                type="button"
-                onClick={() =>
-                  goTo("/profile/wallet")
-                }
-                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
-              >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
-                  <WalletIcon />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-black">
-                    کیف پول
-                  </h3>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    موجودی کیف پول
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  <div className="text-sm font-black text-white">
-                    {formatToman(walletBalance)}
-                    <span className="mr-1 text-xs font-normal text-slate-500">
-                      تومان
-                    </span>
-                  </div>
-
-                  <div className="text-slate-500 transition group-hover:text-white">
-                    <ArrowIcon />
-                  </div>
-                </div>
-              </button>
+            <div className="space-y-2">
 
               {/* Account information */}
               <button
@@ -527,18 +529,18 @@ export default function ProfilePage() {
                     "/profile/account"
                   )
                 }
-                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
               >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
                   <UserInfoIcon />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-black">
+                  <h3 className="text-sm font-black">
                     اطلاعات حساب کاربری
                   </h3>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                  <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
                     نام، شماره موبایل و کارت‌های بانکی
                   </p>
                 </div>
@@ -556,18 +558,18 @@ export default function ProfilePage() {
                     "/profile/saved"
                   )
                 }
-                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
               >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
                   <BookmarkIcon />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-black">
+                  <h3 className="text-sm font-black">
                     اکانت‌های ذخیره‌شده
                   </h3>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                  <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
                     اکانت‌هایی که برای بعد ذخیره کرده‌ای
                   </p>
                 </div>
@@ -585,19 +587,86 @@ export default function ProfilePage() {
                     "/profile/purchases"
                   )
                 }
-                className="group flex w-full items-center gap-4 rounded-3xl border border-white/10 bg-slate-900 p-5 text-right shadow-xl transition hover:border-white/20 hover:bg-slate-800"
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
               >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
                   <CartIcon />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-black">
+                  <h3 className="text-sm font-black">
                     اکانت‌های خریداری‌شده
                   </h3>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                  <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
                     مشاهده اکانت‌ها و اطلاعات خریدهای قبلی
+                  </p>
+                </div>
+
+                <div className="text-slate-500 transition group-hover:text-white">
+                  <ArrowIcon />
+                </div>
+              </button>
+
+              {/* Wallet */}
+              <button
+                type="button"
+                onClick={() =>
+                  goTo("/profile/wallet")
+                }
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                  <WalletIcon />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-black">
+                    کیف پول
+                  </h3>
+
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    موجودی کیف پول
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="text-xs font-black text-white">
+                    {formatToman(
+                      walletBalance
+                    )}
+                    <span className="mr-1 text-[10px] font-normal text-slate-500">
+                      تومان
+                    </span>
+                  </div>
+
+                  <div className="text-slate-500 transition group-hover:text-white">
+                    <ArrowIcon />
+                  </div>
+                </div>
+              </button>
+
+              {/* Transactions */}
+              <button
+                type="button"
+                onClick={() =>
+                  goTo(
+                    "/profile/transactions"
+                  )
+                }
+                className="group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-right shadow-lg transition hover:border-white/20 hover:bg-slate-800"
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-950">
+                  <TransactionIcon />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-black">
+                    تراکنش‌ها
+                  </h3>
+
+                  <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
+                    مشاهده واریزها و برداشت‌های کیف پول
                   </p>
                 </div>
 
