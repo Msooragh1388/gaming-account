@@ -29,10 +29,15 @@ type WalletTransaction = {
   cardOwnerName: string | null;
 };
 
-type FilterType = "all" | "deposit" | "withdraw";
+type FilterType =
+  | "all"
+  | "deposit"
+  | "withdraw";
 
 function formatPrice(amount: number) {
-  return new Intl.NumberFormat("fa-IR").format(amount);
+  return new Intl.NumberFormat("fa-IR").format(
+    amount
+  );
 }
 
 function formatDate(date: string) {
@@ -46,7 +51,9 @@ function formatDate(date: string) {
   }
 }
 
-function getUserName(transaction: WalletTransaction) {
+function getUserName(
+  transaction: WalletTransaction
+) {
   const name = [
     transaction.firstName,
     transaction.lastName,
@@ -60,14 +67,16 @@ function getUserName(transaction: WalletTransaction) {
 export default function AdminTransactionsPage() {
   const router = useRouter();
 
-  const [transactions, setTransactions] = useState<
-    WalletTransaction[]
-  >([]);
+  const [transactions, setTransactions] =
+    useState<WalletTransaction[]>([]);
 
   const [filter, setFilter] =
     useState<FilterType>("all");
 
   const [loading, setLoading] = useState(true);
+
+  const [processingId, setProcessingId] =
+    useState<number | null>(null);
 
   async function loadTransactions() {
     try {
@@ -121,6 +130,106 @@ export default function AdminTransactionsPage() {
     loadTransactions();
   }, []);
 
+  // =========================================
+  // PROCESS TRANSACTION
+  // =========================================
+
+  async function processTransaction(
+    transaction: WalletTransaction,
+    action: "approve" | "reject"
+  ) {
+    if (processingId !== null) {
+      return;
+    }
+
+    if (transaction.status !== "pending") {
+      return;
+    }
+
+    const actionText =
+      action === "approve"
+        ? "تأیید"
+        : "رد";
+
+    const confirmed = window.confirm(
+      `آیا مطمئنی می‌خواهی تراکنش #${transaction.id} را ${actionText} کنی؟`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setProcessingId(transaction.id);
+
+      const response = await fetch(
+        "/api/admin/transactions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action,
+            transactionId: transaction.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            `تراکنش ${actionText} نشد.`
+        );
+      }
+
+      if (!data?.success) {
+        throw new Error(
+          data?.error ||
+            `تراکنش ${actionText} نشد.`
+        );
+      }
+
+      // تغییر وضعیت همان تراکنش در صفحه
+      setTransactions((current) =>
+        current.map((item) =>
+          item.id === transaction.id
+            ? {
+                ...item,
+                status:
+                  action === "approve"
+                    ? "approved"
+                    : "rejected",
+                updatedAt:
+                  new Date().toISOString(),
+              }
+            : item
+        )
+      );
+
+      alert(
+        action === "approve"
+          ? "تراکنش با موفقیت تأیید شد."
+          : "تراکنش با موفقیت رد شد."
+      );
+    } catch (error) {
+      console.error(
+        "processTransaction error:",
+        error
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : `تراکنش ${actionText} نشد.`
+      );
+    } finally {
+      setProcessingId(null);
+    }
+  }
+
   const filteredTransactions =
     filter === "all"
       ? transactions
@@ -134,13 +243,20 @@ export default function AdminTransactionsPage() {
       transaction.status === "pending"
   ).length;
 
+  const approvedCount = transactions.filter(
+    (transaction) =>
+      transaction.status === "approved"
+  ).length;
+
   return (
     <main
       dir="rtl"
       className="min-h-screen bg-zinc-950 text-white"
     >
       <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6">
-        {/* Header */}
+
+        {/* HEADER */}
+
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-black">
@@ -163,8 +279,10 @@ export default function AdminTransactionsPage() {
           </button>
         </div>
 
-        {/* Stats */}
+        {/* STATS */}
+
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
             <p className="text-sm text-zinc-400">
               همه تراکنش‌ها
@@ -191,19 +309,16 @@ export default function AdminTransactionsPage() {
             </p>
 
             <p className="mt-2 text-3xl font-black text-emerald-400">
-              {
-                transactions.filter(
-                  (transaction) =>
-                    transaction.status ===
-                    "approved"
-                ).length
-              }
+              {approvedCount}
             </p>
           </div>
+
         </div>
 
-        {/* Filters */}
+        {/* FILTERS */}
+
         <div className="mb-6 flex flex-wrap gap-3">
+
           <button
             type="button"
             onClick={() => setFilter("all")}
@@ -254,16 +369,19 @@ export default function AdminTransactionsPage() {
               ? "در حال دریافت..."
               : "بروزرسانی"}
           </button>
+
         </div>
 
-        {/* Loading */}
+        {/* LOADING */}
+
         {loading && (
           <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-zinc-400">
             در حال دریافت تراکنش‌ها...
           </div>
         )}
 
-        {/* Empty */}
+        {/* EMPTY */}
+
         {!loading &&
           filteredTransactions.length === 0 && (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
@@ -277,31 +395,41 @@ export default function AdminTransactionsPage() {
             </div>
           )}
 
-        {/* Transactions */}
+        {/* TRANSACTIONS */}
+
         {!loading &&
           filteredTransactions.length > 0 && (
             <div className="space-y-4">
+
               {filteredTransactions.map(
                 (transaction) => {
                   const fullName =
                     getUserName(transaction);
+
+                  const isProcessing =
+                    processingId ===
+                    transaction.id;
 
                   return (
                     <div
                       key={transaction.id}
                       className="rounded-3xl border border-white/10 bg-white/5 p-5"
                     >
-                      {/* Top */}
+
+                      {/* TOP */}
+
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
+
                             <span className="text-lg font-black">
                               تراکنش #
                               {transaction.id}
                             </span>
 
                             {transaction.type ===
-                              "deposit" ? (
+                            "deposit" ? (
                               <span className="rounded-xl bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-400">
                                 واریز
                               </span>
@@ -331,6 +459,7 @@ export default function AdminTransactionsPage() {
                                 رد شده
                               </span>
                             )}
+
                           </div>
 
                           <p className="mt-2 text-sm text-zinc-500">
@@ -341,6 +470,7 @@ export default function AdminTransactionsPage() {
                         </div>
 
                         <div className="text-right lg:text-left">
+
                           <p className="text-sm text-zinc-400">
                             مبلغ
                           </p>
@@ -358,11 +488,15 @@ export default function AdminTransactionsPage() {
                             )}{" "}
                             تومان
                           </p>
+
                         </div>
+
                       </div>
 
-                      {/* Details */}
+                      {/* DETAILS */}
+
                       <div className="mt-5 grid grid-cols-1 gap-3 border-t border-white/10 pt-5 md:grid-cols-2 lg:grid-cols-3">
+
                         <div className="rounded-2xl bg-black/20 p-4">
                           <p className="text-xs text-zinc-500">
                             نام کاربر
@@ -426,9 +560,11 @@ export default function AdminTransactionsPage() {
                               "ثبت نشده"}
                           </p>
                         </div>
+
                       </div>
 
-                      {/* Description */}
+                      {/* DESCRIPTION */}
+
                       {transaction.description && (
                         <div className="mt-3 rounded-2xl bg-black/20 p-4">
                           <p className="text-xs text-zinc-500">
@@ -441,33 +577,61 @@ export default function AdminTransactionsPage() {
                         </div>
                       )}
 
-                      {/* Actions placeholder */}
+                      {/* ACTIONS */}
+
                       {transaction.status ===
                         "pending" && (
                         <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row">
+
                           <button
                             type="button"
-                            disabled
-                            className="flex-1 rounded-2xl bg-emerald-500/20 px-5 py-3 font-bold text-emerald-400 opacity-60"
+                            onClick={() =>
+                              processTransaction(
+                                transaction,
+                                "approve"
+                              )
+                            }
+                            disabled={
+                              processingId !==
+                                null
+                            }
+                            className="flex-1 rounded-2xl bg-emerald-500 px-5 py-3 font-bold text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            تأیید تراکنش
+                            {isProcessing
+                              ? "در حال پردازش..."
+                              : "✓ تأیید تراکنش"}
                           </button>
 
                           <button
                             type="button"
-                            disabled
-                            className="flex-1 rounded-2xl bg-red-500/20 px-5 py-3 font-bold text-red-400 opacity-60"
+                            onClick={() =>
+                              processTransaction(
+                                transaction,
+                                "reject"
+                              )
+                            }
+                            disabled={
+                              processingId !==
+                                null
+                            }
+                            className="flex-1 rounded-2xl bg-red-500 px-5 py-3 font-bold text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            رد تراکنش
+                            {isProcessing
+                              ? "در حال پردازش..."
+                              : "✕ رد تراکنش"}
                           </button>
+
                         </div>
                       )}
+
                     </div>
                   );
                 }
               )}
+
             </div>
           )}
+
       </div>
     </main>
   );
