@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
@@ -5,20 +6,36 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const identifier = String(body.identifier ?? "").trim().toLowerCase();
+    const mobile = String(body.mobile ?? "").trim();
     const password = String(body.password ?? "");
 
-    if (!identifier || !password) {
+    if (!mobile || !password) {
       return NextResponse.json(
-        { error: "ایمیل یا شماره موبایل و رمز عبور را وارد کنید." },
+        {
+          error:
+            "شماره موبایل و رمز عبور را وارد کنید.",
+        },
         { status: 400 }
       );
     }
 
-    const { data, error } = await supabase.rpc("login_user", {
-      p_identifier: identifier,
-      p_password: password,
-    });
+    if (!/^09\d{9}$/.test(mobile)) {
+      return NextResponse.json(
+        {
+          error:
+            "شماره موبایل باید به شکل 09123456789 باشد.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase.rpc(
+      "login_user",
+      {
+        p_mobile: mobile,
+        p_password: password,
+      }
+    );
 
     if (error) {
       return NextResponse.json(
@@ -29,7 +46,10 @@ export async function POST(request: Request) {
 
     if (!data?.success) {
       return NextResponse.json(
-        { error: data?.error || "ورود ناموفق بود." },
+        {
+          error:
+            data?.error || "ورود ناموفق بود.",
+        },
         { status: 401 }
       );
     }
