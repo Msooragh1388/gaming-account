@@ -7,7 +7,11 @@ type Transaction = {
   id: number;
   type: "deposit" | "withdraw";
   amount: number;
-  status: "pending" | "approved" | "rejected";
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "cancelled";
   cardId: number | null;
   description: string | null;
   createdAt: string;
@@ -41,6 +45,10 @@ function getStatusText(status: Transaction["status"]) {
 
   if (status === "approved") {
     return "تأیید شده";
+  }
+
+  if (status === "cancelled") {
+    return "لغو شده";
   }
 
   return "رد شده";
@@ -99,6 +107,8 @@ function StatusDot({
             ? "#f59e0b"
             : status === "approved"
             ? "#22c55e"
+            : status === "cancelled"
+            ? "#94a3b8"
             : "#ef4444",
       }}
     />
@@ -115,70 +125,145 @@ export default function TransactionsPage() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancellingId, setCancellingId] = useState<number | null>(
+    null
+  );
+
+  async function loadTransactions() {
+    try {
+      const token =
+        localStorage.getItem("gaming_account_token");
+
+      if (!token) {
+        router.replace("/profile");
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(
+        "/api/transactions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ||
+            "دریافت تراکنش‌ها با مشکل مواجه شد."
+        );
+      }
+
+      if (!result?.success) {
+        throw new Error(
+          result?.error ||
+            "دریافت تراکنش‌ها با مشکل مواجه شد."
+        );
+      }
+
+      setTransactions(
+        Array.isArray(result.transactions)
+          ? result.transactions
+          : []
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "خطایی در دریافت تراکنش‌ها رخ داد."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const token =
-      localStorage.getItem("gaming_account_token");
+    loadTransactions();
+  }, [router]);
 
-    if (!token) {
-      router.replace("/profile");
+  async function handleCancelTransaction(
+    transactionId: number
+  ) {
+    const confirmed = window.confirm(
+      "آیا مطمئن هستید که می‌خواهید این تراکنش را لغو کنید؟"
+    );
+
+    if (!confirmed) {
       return;
     }
 
-    async function loadTransactions() {
-      try {
-        setLoading(true);
-        setError("");
+    try {
+      const token =
+        localStorage.getItem("gaming_account_token");
 
-        const response = await fetch(
-          "/api/transactions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              token,
-            }),
-          }
-        );
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            result?.error ||
-              "دریافت تراکنش‌ها با مشکل مواجه شد."
-          );
-        }
-
-        if (!result?.success) {
-          throw new Error(
-            result?.error ||
-              "دریافت تراکنش‌ها با مشکل مواجه شد."
-          );
-        }
-
-        setTransactions(
-          Array.isArray(result.transactions)
-            ? result.transactions
-            : []
-        );
-      } catch (err) {
-        console.error(err);
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "خطایی در دریافت تراکنش‌ها رخ داد."
-        );
-      } finally {
-        setLoading(false);
+      if (!token) {
+        router.replace("/profile");
+        return;
       }
-    }
 
-    loadTransactions();
-  }, [router]);
+      setCancellingId(transactionId);
+      setError("");
+
+      const response = await fetch(
+        "/api/transactions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            action: "cancel",
+            transactionId,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ||
+            "لغو تراکنش با مشکل مواجه شد."
+        );
+      }
+
+      if (!result?.success) {
+        throw new Error(
+          result?.error ||
+            "لغو تراکنش انجام نشد."
+        );
+      }
+
+      // بعد از لغو، لیست تراکنش‌ها دوباره از دیتابیس دریافت می‌شود
+      await loadTransactions();
+    } catch (err) {
+      console.error(
+        "handleCancelTransaction error:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "لغو تراکنش با مشکل مواجه شد."
+      );
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   const filteredTransactions = useMemo(() => {
     if (filter === "all") {
@@ -353,6 +438,7 @@ export default function TransactionsPage() {
                 "1px solid rgba(239,68,68,0.14)",
               background:
                 "rgba(239,68,68,0.055)",
+              marginBottom: 10,
             }}
           >
             {error}
@@ -429,6 +515,17 @@ export default function TransactionsPage() {
                 (transaction) => {
                   const isDeposit =
                     transaction.type === "deposit";
+
+                  const statusColor =
+                    transaction.status === "pending"
+                      ? "#fbbf24"
+                      : transaction.status ===
+                        "approved"
+                      ? "#4ade80"
+                      : transaction.status ===
+                        "cancelled"
+                      ? "#94a3b8"
+                      : "#f87171";
 
                   return (
                     <div
@@ -540,14 +637,7 @@ export default function TransactionsPage() {
                             alignItems: "center",
                             gap: 5,
                             flexShrink: 0,
-                            color:
-                              transaction.status ===
-                              "pending"
-                                ? "#fbbf24"
-                                : transaction.status ===
-                                  "approved"
-                                ? "#4ade80"
-                                : "#f87171",
+                            color: statusColor,
                             fontSize: 10,
                             fontWeight: 600,
                           }}
@@ -615,12 +705,64 @@ export default function TransactionsPage() {
 
                         <div
                           style={{
-                            textAlign: "left",
-                            fontSize: 10,
-                            color: "#475569",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
                           }}
                         >
-                          کیف پول
+                          {transaction.status ===
+                            "pending" && (
+                            <button
+                              type="button"
+                              disabled={
+                                cancellingId ===
+                                transaction.id
+                              }
+                              onClick={() =>
+                                handleCancelTransaction(
+                                  transaction.id
+                                )
+                              }
+                              style={{
+                                border:
+                                  "1px solid rgba(239,68,68,0.18)",
+                                background:
+                                  cancellingId ===
+                                  transaction.id
+                                    ? "rgba(239,68,68,0.03)"
+                                    : "rgba(239,68,68,0.07)",
+                                color:
+                                  cancellingId ===
+                                  transaction.id
+                                    ? "#64748b"
+                                    : "#f87171",
+                                borderRadius: 9,
+                                padding: "7px 10px",
+                                fontSize: 10,
+                                fontWeight: 600,
+                                cursor:
+                                  cancellingId ===
+                                  transaction.id
+                                    ? "default"
+                                    : "pointer",
+                              }}
+                            >
+                              {cancellingId ===
+                              transaction.id
+                                ? "در حال لغو..."
+                                : "لغو تراکنش"}
+                            </button>
+                          )}
+
+                          <div
+                            style={{
+                              textAlign: "left",
+                              fontSize: 10,
+                              color: "#475569",
+                            }}
+                          >
+                            کیف پول
+                          </div>
                         </div>
                       </div>
 
