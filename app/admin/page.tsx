@@ -92,13 +92,16 @@ export default function AdminPage() {
   // IMAGES
   // =========================================
 
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [mainImageIndex, setMainImageIndex] = useState(0);
+ const [selectedImages, setSelectedImages] = useState<File[]>([]);
+const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+const [existingImages, setExistingImages] = useState<string[]>([]);
+
 const [mainImageType, setMainImageType] = useState<
   "existing" | "new"
 >("existing");
+
+const [mainImageIndex, setMainImageIndex] =
+  useState(0);
   // =========================================
   // VIDEO
   // =========================================
@@ -312,7 +315,7 @@ const [mainImageType, setMainImageType] = useState<
     setImagePreviews([]);
     setExistingImages([]);
     setMainImageIndex(0);
-
+setMainImageType("existing");
     setSelectedVideo(null);
     setVideoPreview("");
     setExistingVideoUrl("");
@@ -431,92 +434,248 @@ const [mainImageType, setMainImageType] = useState<
     resetForm();
   }
 
-  // =========================================
-  // IMAGE SELECT
-  // =========================================
+ // =========================================
+// IMAGE SELECT
+// =========================================
 
-  function handleImageChange(
-    event: ChangeEvent<HTMLInputElement>
-  ) {
-    const files = Array.from(
-      event.target.files || []
-    );
+function handleImageChange(
+  event: ChangeEvent<HTMLInputElement>
+) {
+  const files = Array.from(
+    event.target.files || []
+  );
 
-    if (files.length === 0) {
-      return;
-    }
-
-    setSelectedImages(files);
-
-    const previews = files.map((file) =>
-      URL.createObjectURL(file)
-    );
-
-    setImagePreviews(previews);
-    setMainImageIndex(0);
+  if (files.length === 0) {
+    return;
   }
 
-  // =========================================
-  // DELETE EXISTING IMAGE
-  // =========================================
+  const previews = files.map((file) =>
+    URL.createObjectURL(file)
+  );
 
-  function deleteExistingImage(index: number) {
-    setExistingImages((current) =>
-      current.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      )
-    );
+  setSelectedImages(files);
+  setImagePreviews(previews);
 
+  // اگر هنوز عکس فعلی نداریم،
+  // اولین عکس جدید اصلی باشد
+  if (existingImages.length === 0) {
+    setMainImageType("new");
     setMainImageIndex(0);
   }
+}
 
-  // =========================================
-  // DELETE SELECTED IMAGE
-  // =========================================
+// =========================================
+// SET MAIN IMAGE
+// =========================================
 
-  function deleteSelectedImage(index: number) {
-    setSelectedImages((current) =>
-      current.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      )
-    );
+function setMainImage(
+  type: "existing" | "new",
+  index: number
+) {
+  if (type === "existing") {
+    setExistingImages((current) => {
+      if (
+        index < 0 ||
+        index >= current.length
+      ) {
+        return current;
+      }
 
-    setImagePreviews((current) =>
-      current.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      )
-    );
+      const selected = current[index];
 
+      return [
+        selected,
+        ...current.filter(
+          (_, imageIndex) =>
+            imageIndex !== index
+        ),
+      ];
+    });
+
+    setMainImageType("existing");
     setMainImageIndex(0);
+
+    return;
   }
 
-  // =========================================
-  // SET MAIN IMAGE
-  // =========================================
-function setMainImage(index: number) {
+  setMainImageType("new");
+  setMainImageIndex(index);
+}
+
+// =========================================
+// MOVE EXISTING IMAGE
+// =========================================
+
+function moveExistingImage(
+  index: number,
+  direction: "up" | "down"
+) {
   setExistingImages((current) => {
+    const newImages = [...current];
+
+    const targetIndex =
+      direction === "up"
+        ? index - 1
+        : index + 1;
+
     if (
-      index < 0 ||
-      index >= current.length
+      targetIndex < 0 ||
+      targetIndex >= newImages.length
     ) {
       return current;
     }
 
-    const selected = current[index];
-
-    return [
-      selected,
-      ...current.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      ),
+    [
+      newImages[index],
+      newImages[targetIndex],
+    ] = [
+      newImages[targetIndex],
+      newImages[index],
     ];
+
+    return newImages;
+  });
+}
+
+// =========================================
+// MOVE NEW IMAGE
+// =========================================
+
+function moveSelectedImage(
+  index: number,
+  direction: "up" | "down"
+) {
+  const targetIndex =
+    direction === "up"
+      ? index - 1
+      : index + 1;
+
+  if (
+    targetIndex < 0 ||
+    targetIndex >= selectedImages.length
+  ) {
+    return;
+  }
+
+  setSelectedImages((current) => {
+    const newFiles = [...current];
+
+    [
+      newFiles[index],
+      newFiles[targetIndex],
+    ] = [
+      newFiles[targetIndex],
+      newFiles[index],
+    ];
+
+    return newFiles;
   });
 
-  setMainImageIndex(0);
+  setImagePreviews((current) => {
+    const newPreviews = [...current];
+
+    [
+      newPreviews[index],
+      newPreviews[targetIndex],
+    ] = [
+      newPreviews[targetIndex],
+      newPreviews[index],
+    ];
+
+    return newPreviews;
+  });
+
+  // اگر عکس جابه‌جا شده اصلی بوده،
+  // جایگاه عکس اصلی هم جابه‌جا شود
+  if (
+    mainImageType === "new" &&
+    mainImageIndex === index
+  ) {
+    setMainImageIndex(targetIndex);
+  } else if (
+    mainImageType === "new" &&
+    mainImageIndex === targetIndex
+  ) {
+    setMainImageIndex(index);
+  }
+}
+
+// =========================================
+// DELETE EXISTING IMAGE
+// =========================================
+
+function deleteExistingImage(index: number) {
+  setExistingImages((current) =>
+    current.filter(
+      (_, imageIndex) =>
+        imageIndex !== index
+    )
+  );
+
+  if (mainImageType === "existing") {
+    if (index === mainImageIndex) {
+      setMainImageIndex(0);
+    } else if (
+      index < mainImageIndex
+    ) {
+      setMainImageIndex(
+        mainImageIndex - 1
+      );
+    }
+  }
+
+  // اگر بعد از حذف هیچ عکس فعلی نماند
+  // و عکس جدید داریم، اولین جدید اصلی شود
+  if (
+    existingImages.length <= 1 &&
+    imagePreviews.length > 0
+  ) {
+    setMainImageType("new");
+    setMainImageIndex(0);
+  }
+}
+
+// =========================================
+// DELETE SELECTED IMAGE
+// =========================================
+
+function deleteSelectedImage(index: number) {
+  setSelectedImages((current) =>
+    current.filter(
+      (_, imageIndex) =>
+        imageIndex !== index
+    )
+  );
+
+  setImagePreviews((current) =>
+    current.filter(
+      (_, imageIndex) =>
+        imageIndex !== index
+    )
+  );
+
+  if (mainImageType === "new") {
+    if (index === mainImageIndex) {
+      if (imagePreviews.length > 1) {
+        setMainImageIndex(
+          index === 0 ? 0 : index - 1
+        );
+      } else if (
+        existingImages.length > 0
+      ) {
+        setMainImageType("existing");
+        setMainImageIndex(0);
+      } else {
+        setMainImageIndex(0);
+      }
+    } else if (
+      index < mainImageIndex
+    ) {
+      setMainImageIndex(
+        mainImageIndex - 1
+      );
+    }
+  }
 }
 
   // =========================================
@@ -1733,9 +1892,10 @@ if (selectedImages.length > 0) {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  setMainImage(
-                                    index
-                                  )
+                                setMainImage(
+  "existing",
+  index
+)
                                 }
                                 className={`absolute left-2 top-2 z-10 rounded-lg px-2 py-1 text-[10px] font-bold ${
                                   mainImageIndex ===
@@ -1755,6 +1915,32 @@ if (selectedImages.length > 0) {
                                 alt={`تصویر ${index + 1}`}
                                 className="aspect-square w-full object-cover"
                               />
+
+<div className="absolute bottom-2 left-2 flex gap-1">
+  <button
+    type="button"
+    onClick={() =>
+      moveExistingImage(index, "up")
+    }
+    disabled={index === 0}
+    className="rounded-lg bg-black/80 px-2 py-1 text-xs font-bold text-white disabled:opacity-30"
+  >
+    ↑
+  </button>
+
+  <button
+    type="button"
+    onClick={() =>
+      moveExistingImage(index, "down")
+    }
+    disabled={
+      index === existingImages.length - 1
+    }
+    className="rounded-lg bg-black/80 px-2 py-1 text-xs font-bold text-white disabled:opacity-30"
+  >
+    ↓
+  </button>
+</div>
 
                               <button
                                 type="button"
@@ -1776,56 +1962,119 @@ if (selectedImages.length > 0) {
                     </div>
                   )}
 
-                  {/* NEW */}
+                 {/* NEW */}
 
-                  {imagePreviews.length >
-                    0 && (
-                    <div className="mt-4">
+{imagePreviews.length > 0 && (
+  <div className="mt-4">
 
-                      <p className="mb-2 text-xs text-zinc-500">
-                        تصاویر جدید
-                      </p>
+    <p className="mb-2 text-xs text-zinc-500">
+      تصاویر جدید
+    </p>
 
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 
-                        {imagePreviews.map(
-                          (
-                            image,
-                            index
-                          ) => (
-                            <div
-                              key={`${image}-${index}`}
-                              className="relative overflow-hidden rounded-2xl border border-white/10"
-                            >
+      {imagePreviews.map(
+        (image, index) => (
+          <div
+            key={`${image}-${index}`}
+            className={`relative overflow-hidden rounded-2xl border ${
+              mainImageType === "new" &&
+              mainImageIndex === index
+                ? "border-white"
+                : "border-white/10"
+            }`}
+          >
 
-                              <img
-                                src={image}
-                                alt={`تصویر جدید ${index + 1}`}
-                                className="aspect-square w-full object-cover"
-                              />
+            {/* MAIN BUTTON */}
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  deleteSelectedImage(
-                                    index
-                                  )
-                                }
-                                className="absolute bottom-2 right-2 rounded-lg bg-red-500 px-2 py-1 text-[10px] font-bold text-white"
-                              >
-                                حذف
-                              </button>
+            <button
+              type="button"
+              onClick={() =>
+                setMainImage(
+                  "new",
+                  index
+                )
+              }
+              className={`absolute left-2 top-2 z-10 rounded-lg px-2 py-1 text-[10px] font-bold ${
+                mainImageType === "new" &&
+                mainImageIndex === index
+                  ? "bg-white text-black"
+                  : "bg-black/70 text-white"
+              }`}
+            >
+              {mainImageType === "new" &&
+              mainImageIndex === index
+                ? "اصلی"
+                : "انتخاب"}
+            </button>
 
-                            </div>
-                          )
-                        )}
+            {/* IMAGE */}
 
-                      </div>
-                    </div>
-                  )}
+            <img
+              src={image}
+              alt={`تصویر جدید ${index + 1}`}
+              className="aspect-square w-full object-cover"
+            />
 
-                </div>
+            {/* ORDER BUTTONS */}
 
+            <div className="absolute bottom-2 left-2 flex gap-1">
+
+              <button
+                type="button"
+                onClick={() =>
+                  moveSelectedImage(
+                    index,
+                    "up"
+                  )
+                }
+                disabled={index === 0}
+                className="rounded-lg bg-black/80 px-2 py-1 text-xs font-bold text-white disabled:opacity-30"
+              >
+                ↑
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  moveSelectedImage(
+                    index,
+                    "down"
+                  )
+                }
+                disabled={
+                  index ===
+                  imagePreviews.length - 1
+                }
+                className="rounded-lg bg-black/80 px-2 py-1 text-xs font-bold text-white disabled:opacity-30"
+              >
+                ↓
+              </button>
+
+            </div>
+
+            {/* DELETE */}
+
+            <button
+              type="button"
+              onClick={() =>
+                deleteSelectedImage(
+                  index
+                )
+              }
+              className="absolute bottom-2 right-2 rounded-lg bg-red-500 px-2 py-1 text-[10px] font-bold text-white"
+            >
+              حذف
+            </button>
+
+          </div>
+        )
+      )}
+
+    </div>
+  </div>
+)}
+</div>
                 {/* VIDEO */}
 
                 <div>
