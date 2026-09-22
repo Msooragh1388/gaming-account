@@ -494,10 +494,28 @@ export default function AdminPage() {
   // =========================================
   // SET MAIN IMAGE
   // =========================================
+function setMainImage(index: number) {
+  setExistingImages((current) => {
+    if (
+      index < 0 ||
+      index >= current.length
+    ) {
+      return current;
+    }
 
-  function setMainImage(index: number) {
-    setMainImageIndex(index);
-  }
+    const selected = current[index];
+
+    return [
+      selected,
+      ...current.filter(
+        (_, imageIndex) =>
+          imageIndex !== index
+      ),
+    ];
+  });
+
+  setMainImageIndex(0);
+}
 
   // =========================================
   // VIDEO SELECT
