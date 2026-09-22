@@ -372,13 +372,9 @@ export default function AdminPage() {
 
       setShowModal(true);
 
-      const { data, error } =
-        await supabase.rpc(
-          "get_product_account",
-          {
-            p_product_id: product.id,
-          }
-        );
+    const { data, error } = await supabase.rpc("get_product_account", {
+  p_id: product.id,
+});
 
       if (error) {
         throw error;
