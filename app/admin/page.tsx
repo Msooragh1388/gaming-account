@@ -1259,48 +1259,26 @@ if (selectedImages.length > 0) {
           {/* ALL ACCOUNTS */}
 
           <button
-  type="button"
-  onClick={() =>
-    router.push("/admin/transactions")
-  }
-  className="relative rounded-3xl border border-white/10 bg-white/5 p-5 text-right transition hover:bg-white/10"
->
-  {pendingTransactionCount > 0 && (
-    <div className="absolute -right-2 -top-2 z-10 flex min-w-8 items-center justify-center rounded-full bg-red-500 px-2 py-1 text-xs font-black text-white shadow-lg shadow-red-500/30">
-      {pendingTransactionCount}
-    </div>
-  )}
+            type="button"
+            onClick={() =>
+              router.push(
+                "/admin/accounts?filter=all"
+              )
+            }
+            className="rounded-3xl border border-white/10 bg-white/5 p-4 text-right transition hover:bg-white/10 active:scale-[0.98] sm:p-5"
+          >
+            <p className="text-xs text-zinc-400">
+              کل اکانت‌ها
+            </p>
 
-  <div className="flex items-start justify-between gap-3">
-    <div>
-      <p className="text-sm text-zinc-400">
-        تراکنش‌ها
-      </p>
+            <p className="mt-2 text-2xl font-black sm:text-3xl">
+              {products.length}
+            </p>
 
-      <p className="mt-2 text-3xl font-black">
-        {transactionCount}
-      </p>
-    </div>
-
-    {pendingTransactionCount > 0 && (
-      <span className="relative flex h-3 w-3">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-
-        <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
-      </span>
-    )}
-  </div>
-
-  {pendingTransactionCount > 0 ? (
-    <p className="mt-3 text-xs font-bold text-red-400">
-      {pendingTransactionCount} تراکنش در انتظار تأیید
-    </p>
-  ) : (
-    <p className="mt-3 text-xs text-zinc-500">
-      تراکنش در انتظار تأیید وجود ندارد
-    </p>
-  )}
-</button>
+            <p className="mt-2 text-[10px] font-bold text-zinc-500 sm:text-xs">
+              مشاهده همه ←
+            </p>
+          </button>
 
           {/* AVAILABLE */}
 
@@ -1378,29 +1356,45 @@ if (selectedImages.length > 0) {
 
           {/* TRANSACTIONS */}
 
-          <button
-            type="button"
-            onClick={() =>
-              router.push(
-                "/admin/transactions"
-              )
-            }
-            className="rounded-3xl border border-orange-500/20 bg-orange-500/5 p-4 text-right transition hover:bg-orange-500/10 active:scale-[0.98] sm:p-5"
-          >
-            <p className="text-xs text-zinc-400">
-              تراکنش‌ها
-            </p>
+         <button
+  type="button"
+  onClick={() =>
+    router.push(
+      "/admin/transactions"
+    )
+  }
+  className="relative rounded-3xl border border-orange-500/20 bg-orange-500/5 p-4 text-right transition hover:bg-orange-500/10 active:scale-[0.98] sm:p-5"
+>
+  {/* NOTIFICATION BADGE */}
 
-            <p className="mt-2 text-2xl font-black text-orange-400 sm:text-3xl">
-              {loadingCounts
-                ? "..."
-                : transactionCount}
-            </p>
+  {pendingTransactionCount > 0 && (
+    <span className="absolute -right-2 -top-2 z-10 flex min-w-7 items-center justify-center rounded-full bg-red-500 px-2 py-1 text-xs font-black text-white shadow-lg shadow-red-500/30">
+      {pendingTransactionCount}
+    </span>
+  )}
 
-            <p className="mt-2 text-[10px] font-bold text-orange-500/70 sm:text-xs">
-              مدیریت تراکنش‌ها ←
-            </p>
-          </button>
+  <p className="text-xs text-zinc-400">
+    تراکنش‌ها
+  </p>
+
+  <p className="mt-2 text-2xl font-black text-orange-400 sm:text-3xl">
+    {loadingCounts
+      ? "..."
+      : transactionCount}
+  </p>
+
+  <p className="mt-2 text-[10px] font-bold text-orange-500/70 sm:text-xs">
+    مدیریت تراکنش‌ها ←
+  </p>
+
+  {/* PENDING TEXT */}
+
+  {pendingTransactionCount > 0 && (
+    <p className="mt-2 text-[10px] font-bold text-red-400 sm:text-xs">
+      {pendingTransactionCount} تراکنش در انتظار تأیید
+    </p>
+  )}
+</button>
 
           {/* GAMES */}
 
