@@ -96,7 +96,9 @@ export default function AdminPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [mainImageIndex, setMainImageIndex] = useState(0);
-
+const [mainImageType, setMainImageType] = useState<
+  "existing" | "new"
+>("existing");
   // =========================================
   // VIDEO
   // =========================================
@@ -693,38 +695,45 @@ function setMainImage(index: number) {
     try {
       setSaving(true);
 
-      let imageUrls = [
-        ...existingImages,
+    let imageUrls = [
+  ...existingImages,
+];
+
+let videoUrl =
+  existingVideoUrl || null;
+
+if (selectedImages.length > 0) {
+  const uploadedImages: string[] = [];
+
+  for (const file of selectedImages) {
+    const url = await uploadFile(
+      file,
+      "images"
+    );
+
+    uploadedImages.push(url);
+  }
+
+  imageUrls = [
+    ...imageUrls,
+    ...uploadedImages,
+  ];
+
+  if (mainImageType === "new") {
+    const selectedNewImage =
+      uploadedImages[mainImageIndex];
+
+    if (selectedNewImage) {
+      imageUrls = [
+        selectedNewImage,
+        ...imageUrls.filter(
+          (image) =>
+            image !== selectedNewImage
+        ),
       ];
-
-      let videoUrl =
-        existingVideoUrl || null;
-
-      // =====================================
-      // UPLOAD NEW IMAGES
-      // =====================================
-
-      if (selectedImages.length > 0) {
-        const uploadedImages: string[] = [];
-
-        for (
-          const file of selectedImages
-        ) {
-          const url =
-            await uploadFile(
-              file,
-              "images"
-            );
-
-          uploadedImages.push(url);
-        }
-
-        imageUrls = [
-          ...imageUrls,
-          ...uploadedImages,
-        ];
-      }
-
+    }
+  }
+}
       // =====================================
       // UPLOAD NEW VIDEO
       // =====================================
