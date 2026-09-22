@@ -296,7 +296,7 @@ export default function ProfilePage() {
   const [mode, setMode] = useState<Mode>("login");
 
   const [name, setName] = useState("");
-  const [identifier, setIdentifier] = useState("");
+  const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
 
@@ -385,14 +385,56 @@ export default function ProfilePage() {
     e.preventDefault();
     setMessage("");
 
-    if (
-      mode === "register" &&
-      password !== repeatPassword
-    ) {
-      setMessage(
-        "رمز عبور و تکرار رمز یکسان نیستند."
-      );
-      return;
+    const cleanMobile = mobile.trim();
+
+    if (mode === "register") {
+      if (!name.trim()) {
+        setMessage("نام و نام خانوادگی را وارد کن.");
+        return;
+      }
+
+      if (!cleanMobile) {
+        setMessage("شماره موبایل را وارد کن.");
+        return;
+      }
+
+      if (!/^09\d{9}$/.test(cleanMobile)) {
+        setMessage(
+          "شماره موبایل باید به صورت 09xxxxxxxxx باشد."
+        );
+        return;
+      }
+
+      if (password.length < 8) {
+        setMessage(
+          "رمز عبور باید حداقل ۸ کاراکتر باشد."
+        );
+        return;
+      }
+
+      if (password !== repeatPassword) {
+        setMessage(
+          "رمز عبور و تکرار رمز یکسان نیستند."
+        );
+        return;
+      }
+    } else {
+      if (!cleanMobile) {
+        setMessage("شماره موبایل را وارد کن.");
+        return;
+      }
+
+      if (!/^09\d{9}$/.test(cleanMobile)) {
+        setMessage(
+          "شماره موبایل باید به صورت 09xxxxxxxxx باشد."
+        );
+        return;
+      }
+
+      if (!password) {
+        setMessage("رمز عبور را وارد کن.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -410,12 +452,12 @@ export default function ProfilePage() {
           body: JSON.stringify(
             mode === "register"
               ? {
-                  name,
-                  identifier,
+                  name: name.trim(),
+                  mobile: cleanMobile,
                   password,
                 }
               : {
-                  identifier,
+                  mobile: cleanMobile,
                   password,
                 }
           ),
@@ -442,6 +484,7 @@ export default function ProfilePage() {
           JSON.stringify({
             userId: data.userId,
             name: data.name,
+            mobile: data.mobile || cleanMobile,
           })
         );
 
@@ -460,6 +503,7 @@ export default function ProfilePage() {
         setMode("login");
         setPassword("");
         setRepeatPassword("");
+        setMobile(cleanMobile);
       }
     } catch {
       setMessage(
@@ -725,7 +769,7 @@ export default function ProfilePage() {
                     اطلاعات حساب کاربری
                   </h3>
 
-                  <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
+                  <p className="mt-0.5 text-[11px] text-slate-500">
                     نام، شماره موبایل و کارت‌های بانکی
                   </p>
                 </div>
@@ -752,7 +796,7 @@ export default function ProfilePage() {
                     پشتیبانی و آموزش
                   </h3>
 
-                  <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
+                  <p className="mt-0.5 text-[11px] text-slate-500">
                     راهنمای استفاده و ارتباط با پشتیبانی
                   </p>
                 </div>
@@ -880,7 +924,7 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setName(e.target.value)
                   }
-                  placeholder="مثلاً محمد سراغی"
+                  placeholder="امیر علی ترابی"
                   className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
                 />
               </div>
@@ -888,17 +932,19 @@ export default function ProfilePage() {
 
             <div>
               <label className="mb-2 block text-sm font-bold">
-                ایمیل یا شماره موبایل
+                شماره موبایل
               </label>
 
               <input
-                type="text"
-                value={identifier}
+                type="tel"
+                value={mobile}
                 onChange={(e) =>
-                  setIdentifier(e.target.value)
+                  setMobile(e.target.value)
                 }
-                placeholder="ایمیل یا شماره موبایل"
+                placeholder="09123456789"
                 dir="ltr"
+                inputMode="numeric"
+                maxLength={11}
                 className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-white"
               />
             </div>
@@ -919,8 +965,9 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setPassword(e.target.value)
                   }
-                  placeholder="حداقل ۶ کاراکتر"
+                  placeholder="حداقل ۸ کاراکتر"
                   dir="ltr"
+                  minLength={8}
                   className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 pl-12 text-white outline-none placeholder:text-slate-500 focus:border-white"
                 />
 
@@ -966,6 +1013,7 @@ export default function ProfilePage() {
                     }
                     placeholder="رمز عبور را دوباره وارد کن"
                     dir="ltr"
+                    minLength={8}
                     className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 pl-12 text-white outline-none placeholder:text-slate-500 focus:border-white"
                   />
 
